@@ -1,0 +1,764 @@
+name: Build portable Windows R renv environment
+permissions:
+  contents: write
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: "Target branch containing the environment lockfile and request manifest"
+        required: true
+        type: string
+      r_version:
+        description: "Full Windows R version"
+        required: true
+        type: string
+      r_minor_version:
+        description: "R major.minor; validated against r_version"
+        required: true
+        type: string
+      r_platform:
+        description: "R platform used in the renv library path"
+        required: true
+        type: string
+      duckdb_version:
+        description: "DuckDB version embedded in the prebuilt asset"
+        required: true
+        type: string
+      duckdb_dbi_version:
+        description: "DBI version used to build the prebuilt DuckDB asset"
+        required: true
+        type: string
+      duckdb_release_tag:
+        description: "Release tag containing the prebuilt DuckDB asset"
+        required: true
+        type: string
+      duckdb_asset:
+        description: "Prebuilt DuckDB ZIP asset name"
+        required: true
+        type: string
+      scaffold_release_tag:
+        description: "Validated project-scaffold-<source-SHA> release tag"
+        required: true
+        type: string
+    secrets:
+      RENV_GITHUB_PAT:
+        required: false
+concurrency:
+  group: build-ingest-${{ inputs.target_branch }}
+  cancel-in-progress: false
+env:
+  TARGET_BRANCH: ${{ inputs.target_branch }}
+  TARGET_R_VERSION: ${{ inputs.r_version }}
+  TARGET_R_MINOR_VERSION: ${{ inputs.r_minor_version }}
+  R_PLATFORM: ${{ inputs.r_platform }}
+  EXPECTED_LIBRARY: renv/library/windows/R-${{ inputs.r_minor_version }}/${{ inputs.r_platform }}
+  STAGING_LIBRARY: renv/staging-library/windows/R-${{ inputs.r_minor_version }}/${{ inputs.r_platform }}
+  VERIFY_LIBRARY: renv/verification-library/windows/R-${{ inputs.r_minor_version }}/${{ inputs.r_platform }}
+  DUCKDB_VERSION: ${{ inputs.duckdb_version }}
+  DUCKDB_DBI_VERSION: ${{ inputs.duckdb_dbi_version }}
+  DUCKDB_RELEASE_TAG: ${{ inputs.duckdb_release_tag }}
+  DUCKDB_ASSET: ${{ inputs.duckdb_asset }}
+  GH_HOST: va.ghe.com
+  GH_TOKEN: ${{ github.token }}
+jobs:
+    build:
+      runs-on: windows-latest
+
+      defaults:
+        run:
+          shell: bash
+
+      steps:
+        - uses: actions/checkout@v5
+          with:
+            fetch-depth: 0
+
+        - name: Validate environment inputs
+          run: |
+            set -euo pipefail
+
+            derived_minor="$(printf '%s' "$TARGET_R_VERSION" | cut -d. -f1,2)"
+            case "$TARGET_R_VERSION" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "Invalid full R version: $TARGET_R_VERSION"; exit 1 ;; esac
+            test "$derived_minor" = "$TARGET_R_MINOR_VERSION"
+            case "$R_PLATFORM" in x86_64-w64-mingw32) ;; *) echo "Unsupported Windows R platform: $R_PLATFORM"; exit 1 ;; esac
+
+        - name: Check out target branch
+          run: |
+            set -euo pipefail
+
+            git fetch origin "$TARGET_BRANCH"
+            git checkout --detach "origin/$TARGET_BRANCH"
+
+        - name: Verify target lockfile and request manifest
+          run: |
+            set -euo pipefail
+
+            test -f renv.lock
+            test -f renv/activate.R
+            test -f renv/package-requests.dcf
+
+            r_record="$RUNNER_TEMP/renv-r-record.txt"
+            grep -A 5 -m 1 '"R"' renv.lock > "$r_record"
+            lock_r_version="$(sed -n -E 's/^[[:space:]]*"Version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$r_record" | head -1)"
+
+            case "$lock_r_version" in
+              "$TARGET_R_MINOR_VERSION".*) ;;
+              *)
+                echo "Expected R $TARGET_R_MINOR_VERSION.x lockfile; observed R record:"
+                sed -n 'l' "$r_record"
+                exit 1
+                ;;
+            esac
+
+        - name: Set up Java 8
+          uses: actions/setup-java@v5
+          with:
+            distribution: temurin
+            java-version: "8"
+
+        - name: Set up R ${{ inputs.r_version }}
+          uses: r-lib/actions/setup-r@v2
+          with:
+            r-version: ${{ inputs.r_version }}
+            use-public-rspm: false
+
+        - name: Verify DuckDB asset matches lockfile
+          run: |
+            set -euo pipefail
+
+            lock_package_version() {
+              awk -v package="$1" '
+                $0 ~ "^[[:space:]]*\"" package "\"[[:space:]]*:[[:space:]]*\\{" { in_package = 1; next }
+                in_package && /"Version"/ {
+                  sub(/.*"Version"[[:space:]]*:[[:space:]]*"/, "")
+                  sub(/".*/, "")
+                  print
+                  exit
+                }
+              ' renv.lock
+            }
+
+            test "$(lock_package_version duckdb)" = "$DUCKDB_VERSION"
+            test "$(lock_package_version DBI)" = "$DUCKDB_DBI_VERSION"
+            test -n "$DUCKDB_RELEASE_TAG"
+            test -n "$DUCKDB_ASSET"
+        - name: Restore renv cache
+          uses: actions/cache/restore@v5
+          with:
+            path: ~/.cache/R/renv
+            key: Windows-r${{ inputs.r_minor_version }}-${{ inputs.r_platform }}-renv-${{ hashFiles('renv.lock') }}
+
+        - id: duckdb-cache
+          name: Restore DuckDB release-asset cache
+          uses: actions/cache/restore@v5
+          with:
+            path: ${{ runner.temp }}/duckdb-release-asset
+            key: ${{ env.DUCKDB_RELEASE_TAG }}-${{ env.DUCKDB_ASSET }}
+
+        - name: Download DuckDB asset
+          if: steps.duckdb-cache.outputs.cache-hit != 'true'
+          run: |
+            set -euo pipefail
+
+            mkdir -p "$RUNNER_TEMP/duckdb-release-asset"
+
+            gh release download "$DUCKDB_RELEASE_TAG" \
+              --repo "$GH_HOST/$GITHUB_REPOSITORY" \
+              --pattern "$DUCKDB_ASSET" \
+              --dir "$RUNNER_TEMP/duckdb-release-asset"
+
+        - name: Bootstrap isolated staging library
+          env:
+            RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+            RENV_PATHS_ROOT: ~/.cache/R/renv
+            RENV_CONFIG_CACHE_SYMLINKS: "FALSE"
+            RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://cloud.r-project.org;OHDSI=https://ohdsi.r-universe.dev"
+          run: |
+            set -euo pipefail
+
+            export RENV_BOOTSTRAP_LIBRARY="$RUNNER_TEMP/renv-bootstrap"
+            export R_LIBS_USER="$RUNNER_TEMP/empty-r-library"
+
+            rm -rf \
+              "$RENV_BOOTSTRAP_LIBRARY" \
+              "$R_LIBS_USER" \
+              renv/staging-library
+
+            mkdir -p \
+              "$RENV_BOOTSTRAP_LIBRARY" \
+              "$R_LIBS_USER" \
+              "$STAGING_LIBRARY"
+
+            Rscript --vanilla - <<'RSCRIPT'
+            bootstrap <- Sys.getenv("RENV_BOOTSTRAP_LIBRARY")
+            stage <- Sys.getenv("STAGING_LIBRARY")
+
+            install.packages(
+              "renv",
+              repos = "https://cloud.r-project.org",
+              lib = bootstrap
+            )
+
+            library(renv, lib.loc = bootstrap)
+            .libPaths(c(stage, .Library))
+
+            renv::restore(
+              project = getwd(),
+              library = stage,
+              packages = "DBI",
+              prompt = FALSE,
+              transactional = FALSE
+            )
+
+            lock <- renv::lockfile_read("renv.lock")
+
+            stopifnot(
+              as.character(packageVersion("DBI", lib.loc = stage)) ==
+                lock$Packages$DBI$Version
+            )
+            RSCRIPT
+
+        - name: Install prebuilt DuckDB into staging
+          run: |
+            set -euo pipefail
+
+            unzip -q \
+              "$RUNNER_TEMP/duckdb-release-asset/$DUCKDB_ASSET" \
+              -d "$STAGING_LIBRARY"
+
+            export R_LIBS_USER="$RUNNER_TEMP/empty-r-library"
+
+            Rscript --vanilla - <<'RSCRIPT'
+            stage <- Sys.getenv("STAGING_LIBRARY")
+
+            stopifnot(
+              as.character(packageVersion("duckdb", lib.loc = stage)) ==
+                Sys.getenv("DUCKDB_VERSION")
+            )
+            RSCRIPT
+
+        - name: Cache validated DuckDB asset
+          if: steps.duckdb-cache.outputs.cache-hit != 'true'
+          uses: actions/cache/save@v5
+          with:
+            path: ${{ runner.temp }}/duckdb-release-asset
+            key: ${{ env.DUCKDB_RELEASE_TAG }}-${{ env.DUCKDB_ASSET }}
+        
+        - name: Neutralize project .Renviron for CI
+          run: |
+            set -euo pipefail
+            : > "$RUNNER_TEMP/ci.Renviron"
+            echo "R_ENVIRON_USER=$RUNNER_TEMP/ci.Renviron" >> "$GITHUB_ENV"
+    
+        - name: Bootstrap OHDSI dependency chain
+          env:
+            GITHUB_PAT: ${{ secrets.RENV_GITHUB_PAT }}
+            RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+            RENV_PATHS_ROOT: ~/.cache/R/renv
+            RENV_CONFIG_CACHE_SYMLINKS: "FALSE"
+            RENV_CONFIG_INSTALL_JOBS: "1"
+            RENV_CONFIG_INSTALL_VERBOSE: "TRUE"
+            RENV_CONFIG_INSTALL_REMOTES: "FALSE"
+            RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://cloud.r-project.org;OHDSI=https://ohdsi.r-universe.dev"
+          run: |
+            set -euo pipefail
+
+            export RENV_BOOTSTRAP_LIBRARY="$RUNNER_TEMP/renv-bootstrap"
+            export R_LIBS_USER="$RUNNER_TEMP/empty-r-library"
+
+            Rscript --vanilla - <<'RSCRIPT'
+            bootstrap <- Sys.getenv("RENV_BOOTSTRAP_LIBRARY")
+            stage <- Sys.getenv("STAGING_LIBRARY")
+
+            stopifnot(
+              dir.exists(bootstrap),
+              dir.exists(stage),
+              nzchar(Sys.getenv("JAVA_HOME"))
+            )
+
+            install.packages(
+              "renv",
+              repos = "https://cloud.r-project.org",
+              lib = bootstrap
+            )
+
+            library(renv, lib.loc = bootstrap)
+            .libPaths(c(stage, .Library))
+
+            normalize_version <- function(x) {
+              gsub("-", ".", as.character(x), fixed = TRUE)
+            }
+
+            java_home <- Sys.getenv("JAVA_HOME")
+            java_bin <- file.path(java_home, "bin")
+
+            if (!dir.exists(java_bin)) {
+              stop("JAVA_HOME/bin does not exist: ", java_bin)
+            }
+
+            path_entries <- strsplit(
+              Sys.getenv("PATH"),
+              .Platform$path.sep,
+              fixed = TRUE
+            )[[1]]
+
+            java_bin_normalized <- normalizePath(
+              java_bin,
+              winslash = "\\",
+              mustWork = FALSE
+            )
+
+            path_normalized <- normalizePath(
+              path_entries,
+              winslash = "\\",
+              mustWork = FALSE
+            )
+
+            if (!any(path_normalized == java_bin_normalized)) {
+              Sys.setenv(
+                PATH = paste(
+                  java_bin,
+                  Sys.getenv("PATH"),
+                  sep = .Platform$path.sep
+                )
+              )
+              message("Prepended JAVA_HOME/bin to PATH.")
+            }
+
+            Sys.setenv(`_JAVA_OPTIONS` = "-Xmx2G")
+            lock <- renv::lockfile_read("renv.lock")
+
+            for (pkg in c(
+              "rJava",
+              "SqlRender",
+              "dbplyr",
+              "readr",
+              "urltools",
+              "bit64",
+              "digest",
+              "DatabaseConnector"
+            )) {
+              message("Restoring prerequisite: ", pkg)
+
+              if (identical(pkg, "DatabaseConnector")) {
+                record <- lock$Packages$DatabaseConnector
+                required_fields <- c("RemoteUsername", "RemoteRepo", "RemoteRef")
+                if (!identical(record$Source, "GitHub") || !all(required_fields %in% names(record))) {
+                  stop("DatabaseConnector lockfile record must pin a GitHub source/ref.")
+                }
+                github_spec <- paste0(record$RemoteUsername, "/", record$RemoteRepo, "@", record$RemoteRef)
+                install.packages("remotes", repos = "https://cloud.r-project.org", lib = bootstrap)
+                library(remotes, lib.loc = bootstrap)
+                remotes::install_github(
+                  github_spec,
+                  lib = stage,
+                  dependencies = FALSE,
+                  upgrade = "never",
+                  force = TRUE,
+                  quiet = FALSE
+                )
+                stopifnot(file.exists(file.path(stage, "DatabaseConnector", "DESCRIPTION")))
+              } else {
+                renv::restore(
+                  project = getwd(),
+                  library = stage,
+                  packages = pkg,
+                  prompt = FALSE,
+                  transactional = FALSE
+                )
+
+                installed <- as.character(packageVersion(pkg, lib.loc = stage))
+                locked <- lock$Packages[[pkg]]$Version
+                if (!identical(normalize_version(installed), normalize_version(locked))) {
+                  stop(pkg, " version mismatch: installed ", installed, "; lockfile requires ", locked)
+                }
+
+                if (identical(pkg, "rJava")) {
+                  library(rJava, lib.loc = stage)
+                  rJava::.jinit()
+                  message("rJava JVM initialization succeeded.")
+                }
+              }
+            }
+            RSCRIPT
+
+        - name: Restore complete lockfile and apply declared package requests
+          env:
+            GITHUB_PAT: ${{ secrets.RENV_GITHUB_PAT }}
+            RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+            RENV_PATHS_ROOT: ~/.cache/R/renv
+            RENV_CONFIG_CACHE_SYMLINKS: "FALSE"
+            RENV_CONFIG_INSTALL_JOBS: "1"
+            RENV_CONFIG_INSTALL_VERBOSE: "TRUE"
+            RENV_CONFIG_INSTALL_REMOTES: "FALSE"
+            RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://cloud.r-project.org;OHDSI=https://ohdsi.r-universe.dev"
+            CI_REPORT: ${{ runner.temp }}/renv-build-report.txt
+          run: |
+            set -euo pipefail
+
+            export RENV_BOOTSTRAP_LIBRARY="$RUNNER_TEMP/renv-bootstrap"
+            export R_LIBS_USER="$RUNNER_TEMP/empty-r-library"
+
+            Rscript --vanilla - <<'RSCRIPT'
+            bootstrap <- Sys.getenv("RENV_BOOTSTRAP_LIBRARY")
+            stage <- Sys.getenv("STAGING_LIBRARY")
+            lockfile <- "renv.lock"
+            manifest <- "renv/package-requests.dcf"
+            report <- Sys.getenv("CI_REPORT")
+            report_lines <- c("Package request report", paste("Manifest:", manifest))
+            write_report <- function() writeLines(report_lines, report)
+
+            run <- function() {
+              install.packages("renv", repos = "https://cloud.r-project.org", lib = bootstrap)
+              library(renv, lib.loc = bootstrap)
+              .libPaths(c(stage, .Library))
+
+              before <- renv::lockfile_read(lockfile)
+              required <- names(before$Packages)
+              restore_error <- NULL
+              for (attempt in seq_len(3L)) {
+                message("renv restore attempt ", attempt, " of 3 for complete lockfile.")
+                restore_error <- tryCatch(
+                  {
+                    renv::restore(
+                      project = getwd(), library = stage,
+                      packages = required, prompt = FALSE,
+                      transactional = FALSE
+                    )
+                    NULL
+                  },
+                  error = function(e) e
+                )
+                if (is.null(restore_error)) break
+                message("Restore attempt ", attempt, " reported: ", conditionMessage(restore_error))
+              }
+              if (!is.null(restore_error)) {
+                stop("Unable to restore complete lockfile after 3 attempts: ", conditionMessage(restore_error))
+              }
+
+              lines <- trimws(readLines(manifest, warn = FALSE))
+              lines <- lines[!startsWith(lines, "#")]   # keep blank lines: they separate DCF records
+              requests <- if (any(nzchar(lines))) as.data.frame(read.dcf(textConnection(lines)), stringsAsFactors = FALSE) else data.frame()
+              
+              if (nrow(requests)) {
+                required <- c("Package", "Source", "Spec", "Dependencies")
+                if (!all(required %in% names(requests))) stop("Each package request must contain: ", paste(required, collapse = ", "))                
+                if (anyDuplicated(requests$Package)) stop("Package request manifest contains duplicate Package entries.")
+                requests$Source <- c(cran = "CRAN", github = "GitHub")[tolower(requests$Source)]
+              }
+
+              for (i in seq_len(nrow(requests))) {
+                pkg <- requests$Package[[i]]
+                source <- requests$Source[[i]]
+                spec <- requests$Spec[[i]]
+                dependencies <- tolower(requests$Dependencies[[i]]) == "true"
+                if (!nzchar(pkg) || is.na(source) || !source %in% c("CRAN", "GitHub") || !nzchar(spec)) stop("Invalid request for package: ", pkg)
+                if (pkg %in% c("DBI", "duckdb")) stop("DBI and duckdb updates require the DuckDB asset workflow: ", pkg)
+                if (source == "GitHub" && (!grepl("@[^@]+$", spec) || grepl("@(main|master|HEAD)$", spec))) stop("GitHub request must be pinned to a tag or commit: ", spec)
+                report_lines <<- c(report_lines, paste("Request:", pkg, source, spec, "Dependencies:", dependencies))
+ 
+                if (identical(pkg, "DatabaseConnector")) {
+                  install.packages("remotes", repos = "https://cloud.r-project.org", lib = bootstrap)
+                  library(remotes, lib.loc = bootstrap)
+                  remotes::install_github(spec, lib = stage, dependencies = if (dependencies) NA else FALSE, upgrade = "never", force = TRUE, quiet = FALSE)                  
+                  stopifnot(file.exists(file.path(stage, pkg, "DESCRIPTION")))
+                } else {
+                  renv::install(spec, library = stage, dependencies = if (dependencies) NULL else FALSE, prompt = FALSE)                  
+                }
+                
+              }
+
+              if (nrow(requests)) {
+                renv::snapshot(
+                   project = getwd(), 
+                   library = .libPaths(), 
+                   type = "all", 
+                   prompt = FALSE, 
+                   force = TRUE
+                )                
+                writeLines(
+                    c(
+                      "# Package-update requests: one DCF record per package.",
+                      "# Leave this file comment-only when no updates are requested.",
+                      "#",
+                      "# CRAN: use Package or Package@<version>; CRAN versions normally do not use a v prefix.",
+                      "# GitHub: use owner/repo@<tag-or-commit>; retain v only when it is part of the actual Git tag.",
+                      "# GitHub refs must be a release tag or commit SHA, never main, master, or HEAD.",
+                      "# Dependencies: true installs required dependencies (Depends, Imports, LinkingTo) but not Suggests.",
+                      "",
+                      "# CRAN example:",
+                      "# Package: reticulate",
+                      "# Source: CRAN",
+                      "# Spec: reticulate@1.46.0",
+                      "# Dependencies: true",
+                      "",
+                      "# GitHub example:",
+                      "# Package: PatientLevelPrediction",
+                      "# Source: GitHub",
+                      "# Spec: OHDSI/PatientLevelPrediction@v6.6.0",
+                      "# Dependencies: true"
+                    ),
+                    manifest
+                )
+                report_lines <<- c(report_lines, "All declared requests installed and removed from manifest.")
+              }
+
+              candidate <- renv::lockfile_read(lockfile)
+              normalize_version <- function(x) gsub("-", ".", as.character(x), fixed = TRUE)
+              installed_version <- function(pkg) {
+                desc <- utils::packageDescription(pkg, lib.loc = c(stage, .Library))
+                if (is.null(desc) || is.null(desc$Version)) NA_character_ else as.character(desc$Version)
+              }
+              bad <- vapply(names(candidate$Packages), function(pkg) !identical(normalize_version(installed_version(pkg)), normalize_version(candidate$Packages[[pkg]]$Version)), logical(1))
+              if (any(bad)) stop("Candidate lockfile/library mismatch: ", paste(names(bad)[bad], collapse = ", "))
+              report_lines <<- c(report_lines, "Complete lockfile/library verification passed.")
+              write_report()
+            }
+            tryCatch(run(), error = function(e) {
+              report_lines <<- c(report_lines, paste("FAILURE:", conditionMessage(e)))
+              write_report()
+              stop(e)
+            })
+            RSCRIPT
+
+        - name: Independently restore and verify candidate
+          env:
+            GITHUB_PAT: ${{ secrets.RENV_GITHUB_PAT }}
+            RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+            RENV_PATHS_ROOT: ~/.cache/R/renv
+            RENV_CONFIG_CACHE_SYMLINKS: "FALSE"
+            RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://cloud.r-project.org;OHDSI=https://ohdsi.r-universe.dev"
+          run: |
+            set -euo pipefail
+
+            export RENV_BOOTSTRAP_LIBRARY="$RUNNER_TEMP/renv-bootstrap"
+            export R_LIBS_USER="$RUNNER_TEMP/empty-r-library"
+            rm -rf renv/verification-library "$RUNNER_TEMP/renv-activation-project"
+            mkdir -p "$VERIFY_LIBRARY" "$RUNNER_TEMP/renv-activation-project/renv/library/windows/R-${{ inputs.r_minor_version }}"
+            unzip -q "$RUNNER_TEMP/duckdb-release-asset/$DUCKDB_ASSET" -d "$VERIFY_LIBRARY"
+
+            Rscript --vanilla - <<'RSCRIPT'
+            bootstrap <- Sys.getenv("RENV_BOOTSTRAP_LIBRARY")
+            verify <- Sys.getenv("VERIFY_LIBRARY")
+            install.packages("renv", repos = "https://cloud.r-project.org", lib = bootstrap)
+            library(renv, lib.loc = bootstrap)
+            .libPaths(c(verify, .Library))
+            lock <- renv::lockfile_read("renv.lock")
+            restore_error <- NULL
+            for (attempt in seq_len(3L)) {
+              message("Verification restore attempt ", attempt, " of 3 for complete candidate lockfile.")
+              restore_error <- tryCatch(
+                {
+                  renv::restore(project = getwd(), library = verify, packages = names(lock$Packages), prompt = FALSE, transactional = FALSE)
+                  NULL
+                },
+                error = function(e) e
+              )
+              if (is.null(restore_error)) break
+              message("Verification restore attempt ", attempt, " reported: ", conditionMessage(restore_error))
+            }
+            if (!is.null(restore_error)) stop("Unable to restore verification library after 3 attempts: ", conditionMessage(restore_error))
+            installed <- vapply(
+                names(lock$Packages), 
+                function(pkg) as.character(
+                   packageVersion(pkg, lib.loc = c(verify, .Library))
+                ), 
+                character(1)
+            )
+            locked <- vapply(lock$Packages, function(record) as.character(record$Version), character(1))
+            if (!identical(gsub("-", ".", installed, fixed = TRUE), gsub("-", ".", locked, fixed = TRUE))) stop("Verification library does not match candidate lockfile.")
+            for (pkg in c("DBI", "duckdb", "DatabaseConnector")) library(pkg, character.only = TRUE, lib.loc = verify)
+            RSCRIPT
+
+            activation_root="$RUNNER_TEMP/renv-activation-project"
+            cp .Rprofile "$activation_root/.Rprofile"
+            cp renv/activate.R "$activation_root/renv/activate.R"
+            cp renv.lock "$activation_root/renv.lock"
+            cp -a "$VERIFY_LIBRARY" "$activation_root/renv/library/windows/R-${{ inputs.r_minor_version }}/"
+            RENV_CONFIG_AUTOLOADER_ENABLED=TRUE Rscript --vanilla - <<'RSCRIPT'
+            setwd(file.path(Sys.getenv("RUNNER_TEMP"), "renv-activation-project"))
+            source(".Rprofile")
+            
+            expected_library <- normalizePath(
+                file.path(
+                  getwd(), "renv", "library", "windows", "R-${{ inputs.r_minor_version }}",
+                  "x86_64-w64-mingw32"
+                ),
+                winslash = "/",
+                mustWork = TRUE
+            )
+            
+            active_libraries <- normalizePath(
+                .libPaths(),
+                winslash = "/",
+                mustWork = FALSE
+            )
+            
+            message("Expected activation library: ", expected_library)
+            message(
+                "Active libraries after activation:\n  - ",
+                paste(active_libraries, collapse = "\n  - ")
+            )
+            
+            stopifnot(expected_library %in% active_libraries)
+            RSCRIPT
+                
+        - id: promote
+          name: Promote validated library
+          run: |
+            set -euo pipefail
+
+            test -f "$STAGING_LIBRARY/duckdb/DESCRIPTION"
+            test -f "$STAGING_LIBRARY/DatabaseConnector/DESCRIPTION"
+
+            rm -rf "$EXPECTED_LIBRARY"
+            mkdir -p "$(dirname "$EXPECTED_LIBRARY")"
+            mv "$STAGING_LIBRARY" "$EXPECTED_LIBRARY"
+
+            echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+        - name: Upload build report
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: renv-build-report-r${{ inputs.r_minor_version }}
+            path: ${{ runner.temp }}/renv-build-report.txt
+            if-no-files-found: warn
+
+        - name: Save renv cache
+          if: always()
+          uses: actions/cache/save@v5
+          with:
+            path: ~/.cache/R/renv
+            key: Windows-r${{ inputs.r_minor_version }}-${{ inputs.r_platform }}-renv-${{ hashFiles('renv.lock') }}
+
+        - name: Commit target library and lockfile
+          if: ${{ success() && steps.promote.outputs.promoted == 'true' }}
+          run: |
+              set -euo pipefail
+
+              publish_root="$RUNNER_TEMP/renv-publish"
+              publish_worktree="$publish_root/worktree"
+
+              rm -rf "$publish_root"
+              mkdir -p "$publish_root"
+
+              # Preserve exactly the generated release outputs before changing
+              # to a clean checkout of the target branch.
+              mv "$EXPECTED_LIBRARY" "$publish_root/library"
+              cp renv.lock "$publish_root/renv.lock"
+              cp renv/package-requests.dcf "$publish_root/package-requests.dcf"
+
+              git fetch origin "$TARGET_BRANCH"
+
+              # The commit created below will be based only on the remote
+              # target branch—not on the branch/ref used to run this workflow.
+              git worktree add --detach \
+                "$publish_worktree" \
+                "origin/$TARGET_BRANCH"
+
+              rm -rf "$publish_worktree/$EXPECTED_LIBRARY"
+              mkdir -p "$(dirname "$publish_worktree/$EXPECTED_LIBRARY")"
+
+              mv "$publish_root/library" "$publish_worktree/$EXPECTED_LIBRARY"
+              cp "$publish_root/renv.lock" "$publish_worktree/renv.lock"
+              cp "$publish_root/package-requests.dcf" "$publish_worktree/renv/package-requests.dcf"
+
+              git -C "$publish_worktree" \
+                -c core.autocrlf=false \
+                -c core.safecrlf=false \
+                add -f -- \
+                renv.lock \
+                renv/package-requests.dcf \
+                "$EXPECTED_LIBRARY"
+
+              if git -C "$publish_worktree" diff --cached --quiet; then
+                echo "No library or lockfile changes to commit."
+                exit 0
+              fi
+
+              git -C "$publish_worktree" \
+                -c user.name="richard.boyce1[bot]" \
+                -c user.email="richard.boyce1@va.gov" \
+                commit -m "Update R ${{ inputs.r_minor_version }} renv library"
+
+              git -C "$publish_worktree" push origin \
+                "HEAD:refs/heads/$TARGET_BRANCH"
+
+              git worktree remove --force "$publish_worktree"
+
+        - name: Publish portable air-gap project ZIP
+          if: ${{ success() && steps.promote.outputs.promoted == 'true' }}
+          run: |
+              set -euo pipefail
+
+              release_worktree="$RUNNER_TEMP/renv-release-worktree"
+              scaffold_dir="$RUNNER_TEMP/project-scaffold"
+              bundle_dir="$RUNNER_TEMP/portable-project"
+              extract_dir="$RUNNER_TEMP/portable-project-extract"
+              scaffold_tag="${{ inputs.scaffold_release_tag }}"
+              scaffold_archive="$scaffold_tag.zip"
+              scaffold_checksum="$scaffold_archive.sha256"
+
+              rm -rf "$release_worktree" "$scaffold_dir" "$bundle_dir" "$extract_dir"
+              mkdir -p "$scaffold_dir" "$bundle_dir"
+
+              gh release download "$scaffold_tag" \
+                --repo "$GH_HOST/$GITHUB_REPOSITORY" \
+                --pattern "$scaffold_archive" \
+                --pattern "$scaffold_checksum" \
+                --dir "$scaffold_dir"
+              (cd "$scaffold_dir" && sha256sum -c "$scaffold_checksum")
+              7z x -y "-o$bundle_dir" "$scaffold_dir/$scaffold_archive" >/dev/null
+
+              test -f "$bundle_dir/.Rprofile"
+              test -f "$bundle_dir/HadesProject.Rproj"
+              test -f "$bundle_dir/renv/activate.R"
+              test ! -e "$bundle_dir/renv.lock"
+              test ! -e "$bundle_dir/renv/library"
+
+              git fetch origin "$TARGET_BRANCH"
+              target_sha="$(git rev-parse "origin/$TARGET_BRANCH")"
+              git worktree add --detach "$release_worktree" "$target_sha"
+              cleanup() { git worktree remove --force "$release_worktree" 2>/dev/null || true; }
+              trap cleanup EXIT
+
+              test -f "$release_worktree/renv.lock"
+              test -f "$release_worktree/$EXPECTED_LIBRARY/duckdb/DESCRIPTION"
+              test -f "$release_worktree/$EXPECTED_LIBRARY/DatabaseConnector/DESCRIPTION"
+              cp "$release_worktree/renv.lock" "$bundle_dir/renv.lock"
+              mkdir -p "$bundle_dir/renv/library/windows/R-${{ inputs.r_minor_version }}"
+              cp -a "$release_worktree/$EXPECTED_LIBRARY" "$bundle_dir/renv/library/windows/R-${{ inputs.r_minor_version }}/"
+
+              scaffold_sha="${scaffold_tag#project-scaffold-}"
+              release_tag="portable-project-windows-r${{ inputs.r_minor_version }}-$scaffold_sha-$target_sha"
+              archive_name="portable-project-windows-r${{ inputs.r_minor_version }}-${scaffold_sha:0:8}-${target_sha:0:8}.zip"
+              
+              archive_path="$RUNNER_TEMP/$archive_name"
+              checksum_path="$RUNNER_TEMP/$archive_name.sha256"
+              cat > "$bundle_dir/manifest.txt" <<MANIFEST
+              Release tag: $release_tag
+              Scaffold release tag: $scaffold_tag
+              Scaffold SHA-256: $(awk '{print $1}' "$scaffold_dir/$scaffold_checksum")
+              Environment commit: $target_sha
+              R version: $TARGET_R_VERSION
+              Platform: $R_PLATFORM
+              DuckDB version: $DUCKDB_VERSION
+              DuckDB release tag: $DUCKDB_RELEASE_TAG
+              Environment lockfile SHA-256: $(sha256sum "$release_worktree/renv.lock" | awk '{print $1}')
+              MANIFEST
+
+              (cd "$bundle_dir" && 7z a -tzip "$archive_path" . >/dev/null)
+              (cd "$RUNNER_TEMP" && sha256sum "$archive_name" > "$archive_name.sha256")
+              7z x -y "-o$extract_dir" "$archive_path" >/dev/null
+              test -f "$extract_dir/.Rprofile"
+              test -f "$extract_dir/HadesProject.Rproj"
+              test -f "$extract_dir/renv.lock"
+              test -f "$extract_dir/$EXPECTED_LIBRARY/duckdb/DESCRIPTION"
+              Rscript --vanilla -e 'setwd(Sys.getenv("RUNNER_TEMP")); setwd(file.path(getwd(), "portable-project-extract")); source(".Rprofile"); library(DBI); library(duckdb); library(DatabaseConnector)'
+
+              if gh release view "$release_tag" --repo "$GH_HOST/$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                gh release upload "$release_tag" "$archive_path" "$checksum_path" --repo "$GH_HOST/$GITHUB_REPOSITORY" --clobber
+              else
+                gh release create "$release_tag" "$archive_path" "$checksum_path" --repo "$GH_HOST/$GITHUB_REPOSITORY" --target "$target_sha" --title "Portable Windows R ${{ inputs.r_minor_version }} project $target_sha" --notes "Validated air-gapped project bundle. Extract and open HadesProject.Rproj with Windows R $TARGET_R_VERSION."
+              fi
