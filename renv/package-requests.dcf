@@ -1,0 +1,19 @@
+# Package-update requests: one DCF record per package.
+# Leave this file comment-only when no updates are requested.
+#
+# CRAN: use Package or Package@<version>; CRAN versions normally do not use a v prefix.
+# GitHub: use owner/repo@<tag-or-commit>; retain v only when it is part of the actual Git tag.
+# GitHub refs must be a release tag or commit SHA, never main, master, or HEAD.
+# Dependencies: true installs required dependencies for the requested package.
+
+# CRAN example:
+# Package: reticulate
+# Source: CRAN
+# Spec: reticulate@1.46.0
+# Dependencies: true
+
+# GitHub example:
+# Package: PatientLevelPrediction
+# Source: GitHub
+# Spec: OHDSI/PatientLevelPrediction@v6.6.0
+# Dependencies: true
