@@ -9,7 +9,7 @@ on:
 env:
   R_VERSION: ${{ inputs.r_version }}
   R_PLATFORM: x86_64-w64-mingw32
-  GH_HOST: va.ghe.com    
+  GH_HOST: github.com    
   GH_TOKEN: ${{ github.token }}
   
 jobs:
