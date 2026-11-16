@@ -1,0 +1,180 @@
+### Risk Factors
+```{r}
+#| echo: false
+#| results: 'asis'
+
+# Should this only be for the target?
+  
+
+# TODO restrict to T and O cohorts of interest
+targetIds <- cohortDefinitions %>%
+  dplyr::filter(.data$cohortDefinitionId %in% targetIdsOfInterest) %>%
+  dplyr::arrange(.data$order, .data$cohortDefinitionId) %>%
+  dplyr::pull("cohortDefinitionId")
+
+caseIds <- OhdsiReportGenerator::getCharacterizationCaseSettings(
+  connectionHandler = connectionHandler,
+  schema = params$schema,
+  targetIds = unique(targetIds),
+  outcomeIds = outcomeIdsOfInterest
+)
+
+
+if(!is.null(caseIds) && nrow(caseIds) > 0){
+
+  caseIds <- caseIds %>% 
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      tar = paste0("(", .data$startAnchor, " + ", .data$riskWindowStart, ") - (",
+      .data$endAnchor, " + ", .data$riskWindowEnd, ")")
+    )
+
+  
+  for(ind in 1:nrow(caseIds)){
+    
+    caseId <- caseIds$characterizationCaseId[ind]
+    
+    # need to run this per t and o and settings
+    if(caseId != 0){
+    riskFactorsBinary <- OhdsiReportGenerator::getBinaryRiskFactors(
+      connectionHandler = connectionHandler, 
+      schema = params$schema, 
+      characterizationCaseId = caseId, 
+      analysisIds = c(1,4,5,210,410)
+    )} else{
+      #older inputs
+      riskFactorsBinary <- OhdsiReportGenerator::getBinaryRiskFactors(
+      connectionHandler = connectionHandler, 
+      schema = params$schema, 
+      characterizationTargetId = caseIds$targetId[ind], 
+      outcomeId = caseIds$outcomeId[ind], 
+      outcomeWashout = caseIds$outcomeWashoutDays[ind], 
+      riskWindowStart = caseIds$riskWindowStart[ind], 
+      riskWindowEnd = caseIds$riskWindowEnd[ind], 
+      endAnchor = caseIds$endAnchor[ind], 
+      startAnchor = caseIds$startAnchor[ind],
+      analysisIds = c(1,4,5,210,410)
+    )
+    }
+    
+    notNull <- !is.null(riskFactorsBinary)
+    hasRows <- FALSE
+    if(notNull){
+      hasRows <- nrow(riskFactorsBinary) > 0 
+    }
+    if(notNull & hasRows ){
+    riskFactorsBinary <- OhdsiReportGenerator::formatBinaryCovariateName(riskFactorsBinary)
+
+
+      # get all the settings
+      limitToFirstInNDays <- caseIds[ind,]$limitToFirstInNDays
+      minPriorObservation <- caseIds[ind,]$minPriorObservation
+      nestingName <- caseIds[ind,]$nestingName
+      minAge <- caseIds[ind,]$minAge
+      maxAge <- caseIds[ind,]$maxAge
+      studyStart <- caseIds[ind,]$studyStart
+      studyEnd <- caseIds[ind,]$studyEnd
+      genderConceptIds <- caseIds[ind,]$genderConceptIds
+      outcomeWashoutDays <- caseIds[ind,]$outcomeWashoutDays
+      tar <- caseIds[ind,]$tar
+      
+      #TODO: add the other target settings in the text
+      boxTitle <- paste0(
+          'Risk Factors for ', 
+          cohortDefinitions$friendlyName[cohortDefinitions$cohortDefinitionId == caseIds$outcomeId[ind]],
+          ' occuring for the first time in ',
+          outcomeWashoutDays,
+          ' days during ',
+          tar,
+          ' for patients exposed to ',
+          cohortDefinitions$friendlyName[cohortDefinitions$cohortDefinitionId == caseIds$targetId[ind]], ' ' 
+          , cohortDefinitions$subsetText[cohortDefinitions$cohortDefinitionId == caseIds$targetId[ind]],
+          ' nested in cohort ', nestingName, 
+          ' exposed for the first time in ',  limitToFirstInNDays , ' days',
+          ' with >= ', minPriorObservation, ' days prior observation',
+          ' aged between ', minAge, ' - ', maxAge,
+          ' index starting between ', studyStart , ' and ', studyEnd,
+          ' with gender conceptIds restricted to ', genderConceptIds
+        )
+      
+      # print the binary risk factors in a collapseable box
+      writeLines("")
+      writeLines("")
+      writeLines("::: {.callout-note collapse=true}")
+      cat(paste0("\n# ",boxTitle, '\n\n'))
+      
+      temp <- riskFactorsBinary %>%
+          dplyr::arrange(-1*.data$absSmd) %>%
+          dplyr::filter(
+            .data$absSmd > 0.1,
+            .data$caseCount >= 0 # make this an input?
+          ) %>%
+          head(
+            n = 200 # select top 200
+          ) %>%
+         dplyr::select(
+          "covariateName",
+          "databaseName",
+          "caseCount", 
+          "caseAverage",
+          "nonCaseCount", 
+          "nonCaseAverage",
+          "smd", 
+          "absSmd"
+          )
+
+         print(htmltools::tagList(
+    temp %>%
+      dplyr::group_by(.data$covariateName) %>%
+      gt::gt() %>%
+      gt::fmt_percent(
+        columns = c("caseAverage","nonCaseAverage"), 
+        decimals = 2
+      ) %>%
+      gt::fmt_number(
+        columns = c("smd", "absSmd"), 
+        decimals = 2
+      ) %>%
+      gt::fmt_integer(
+        columns = c("caseCount", "nonCaseCount")
+      ) %>%
+      gt::cols_label(
+        covariateName = "Covariate"
+      ) %>%
+      gt::tab_options(
+        heading.align = "left",
+        data_row.padding = gt::px(7),
+        column_labels.font.size = gt::px(12),
+        column_labels.background.color = "#EB1800",
+        column_labels.font.weight = "bold",
+        row_group.background.color = "#D3D3D3",
+        row_group.font.weight = "bold"
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_text(
+          color = "darkgrey",
+          font = gt::google_font("Source Sans Pro"),
+          transform = "uppercase"
+        ),
+        locations = gt::cells_column_labels(gt::everything())
+      ) 
+  ))
+  
+      writeLines("")
+      writeLines("")
+      writeLines(":::")
+      writeLines("")
+      
+    }}} else{
+      writeLines("")
+      writeLines("")
+      writeLines("::: {.callout-note collapse=true}")
+      cat(paste0("\n# No risk factors \n\n"))
+      cat("\n\n No risk factors for the target of interest")
+      writeLines("")
+      writeLines("")
+      writeLines(":::")
+      writeLines("")
+    }
+
+```
