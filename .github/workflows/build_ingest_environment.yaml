@@ -58,7 +58,7 @@ env:
   DUCKDB_DBI_VERSION: ${{ inputs.duckdb_dbi_version }}
   DUCKDB_RELEASE_TAG: ${{ inputs.duckdb_release_tag }}
   DUCKDB_ASSET: ${{ inputs.duckdb_asset }}
-  GH_HOST: va.ghe.com
+  GH_HOST: github.com
   GH_TOKEN: ${{ github.token }}
 jobs:
     build:
