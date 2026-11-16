@@ -3,8 +3,8 @@ permissions: {contents: write}
 on:
   workflow_dispatch:
     inputs:
-      r_version: {description: "Full R version to build against", required: true, default: "4.4.1", type: string}
-      duckdb_version: {required: true, default: "1.5.5", type: string}
+      r_version: {description: "Full R version to build against", required: true, default: "4.5.2", type: string}
+      duckdb_version: {required: true, default: "2.0.0", type: string}
       dbi_version: {required: true, default: "1.3.0", type: string}
 env:
   R_VERSION: ${{ inputs.r_version }}
