@@ -1,0 +1,24 @@
+name: Build ingest branch for Windows R 4.6
+permissions:
+  contents: write
+on:
+  workflow_dispatch:
+    inputs:
+      scaffold_release_tag:
+        description: "Validated project-scaffold-<source-SHA> release tag"
+        required: true
+        type: string
+jobs:
+  build:
+    uses: ./.github/workflows/build_ingest_environment.yaml
+    with:
+      target_branch: ingest_Rv4.6
+      r_version: "4.6.1"
+      r_minor_version: "4.6"
+      r_platform: x86_64-w64-mingw32
+      duckdb_version: "2.0.0"
+      duckdb_dbi_version: "1.3.0"
+      duckdb_release_tag: duckdb-windows-r4.6-duckdb-2.0.0
+      duckdb_asset: duckdb-windows-r4.6-x86_64-w64-mingw32-2.0.0.zip
+      scaffold_release_tag: ${{ inputs.scaffold_release_tag }}
+    secrets: inherit
