@@ -45,7 +45,47 @@ jobs:
           rm -rf "$RENV_BOOTSTRAP_LIBRARY" "$R_LIBS_USER" "$DUCKDB_LIBRARY" "$RUNNER_TEMP/duckdb-release-asset"
           mkdir -p "$RENV_BOOTSTRAP_LIBRARY" "$R_LIBS_USER" "$DUCKDB_LIBRARY" "$RUNNER_TEMP/duckdb-release-asset"
           Rscript --vanilla - <<'RSCRIPT'
-          b<-Sys.getenv("RENV_BOOTSTRAP_LIBRARY"); l<-Sys.getenv("DUCKDB_LIBRARY"); install.packages("renv",repos="https://cloud.r-project.org",lib=b); library(renv,lib.loc=b); .libPaths(c(l,.Library)); renv::install(paste0("DBI@",Sys.getenv("INPUT_DBI_VERSION")),library=l); Sys.setenv(MAKEFLAGS="-j2"); install.packages("duckdb",repos="https://cloud.r-project.org",type="source",lib=l); stopifnot(as.character(packageVersion("DBI",lib.loc=l))==Sys.getenv("INPUT_DBI_VERSION"), as.character(packageVersion("duckdb",lib.loc=l))==Sys.getenv("INPUT_DUCKDB_VERSION"), R.version$platform==Sys.getenv("R_PLATFORM"))
+          version <- Sys.getenv("INPUT_DUCKDB_VERSION")
+          if (!grepl("^[0-9]+(\\.[0-9]+)+$", version)) {
+            stop("Invalid DuckDB version: ", version)
+          }
+
+          repo <- "https://cloud.r-project.org"
+          packages <- available.packages(repos = repo, type = "source", filters = character())
+          current <- if ("duckdb" %in% rownames(packages)) packages["duckdb", "Version"] else NA_character_
+          filename <- paste0("duckdb_", version, ".tar.gz")
+          url <- if (!is.na(current) && current == version) {
+            paste0(repo, "/src/contrib/", filename)
+          } else {
+            paste0(repo, "/src/contrib/Archive/duckdb/", filename)
+          }
+
+          source_dir <- tempfile("duckdb-source-")
+          dir.create(source_dir)
+          tarball <- file.path(source_dir, filename)
+          download.file(url, tarball, mode = "wb", quiet = FALSE)
+          if (untar(tarball, files = "duckdb/DESCRIPTION", exdir = source_dir) != 0) {
+            stop("Could not extract DuckDB source metadata")
+          }
+          actual <- read.dcf(file.path(source_dir, "duckdb", "DESCRIPTION"))[1, "Version"]
+          if (actual != version) {
+            stop("DuckDB version mismatch: requested ", version, ", source contains ", actual)
+          }
+          message("Building DuckDB ", actual, " from ", url)
+
+          b <- Sys.getenv("RENV_BOOTSTRAP_LIBRARY")
+          l <- Sys.getenv("DUCKDB_LIBRARY")
+          install.packages("renv", repos = repo, lib = b)
+          library(renv, lib.loc = b)
+          .libPaths(c(l, .Library))
+          renv::install(paste0("DBI@", Sys.getenv("INPUT_DBI_VERSION")), library = l)
+          Sys.setenv(MAKEFLAGS = "-j2")
+          install.packages(tarball, repos = NULL, type = "source", lib = l)
+          stopifnot(
+            as.character(packageVersion("DBI", lib.loc = l)) == Sys.getenv("INPUT_DBI_VERSION"),
+            as.character(packageVersion("duckdb", lib.loc = l)) == version,
+            R.version$platform == Sys.getenv("R_PLATFORM")
+          )
           RSCRIPT
           (cd "$DUCKDB_LIBRARY" && zip -qr "$RUNNER_TEMP/duckdb-release-asset/duckdb-windows-r${{ steps.r-version.outputs.minor }}-x86_64-w64-mingw32-${{ inputs.duckdb_version }}.zip" duckdb)
       - uses: actions/cache/save@v5
