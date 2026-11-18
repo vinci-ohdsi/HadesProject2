@@ -1,0 +1,56 @@
+acp_call_action         Call an ACP action endpoint
+acp_call_flow           Call an ACP flow endpoint
+acp_check_compatibility
+                        Check ACP client/server API compatibility
+acp_check_health        Check ACP health
+acp_client              Create an ACP client object
+acp_cohort_methods_intent_split
+                        Call cohort methods intent split flow
+acp_concept_set_edit    Call ACP concept-set edit action
+acp_connect             Connect to ACP and store a default client
+acp_execute_llm_actions_concept_set
+                        Call ACP execute-llm action for concept-set
+                        edits
+acp_get_default_client
+                        Get the default ACP client if connected
+acp_is_connected        Determine whether an ACP client object appears
+                        valid
+acp_keeper_concept_sets_generate
+                        Call keeper concept set generation flow
+acp_keeper_profiles_generate
+                        Call keeper profile generation flow
+acp_lint_cohort_general_design
+                        Call ACP general cohort critique flow
+acp_lint_concept_sets   Call ACP concept-set lint flow
+acp_phenotype_recommendation_advice
+                        Call phenotype recommendation advice flow
+acp_phenotype_validation_review
+                        Call phenotype validation review flow
+acp_review_phenotypes   Call phenotype improvements flow
+acp_server_info         Retrieve ACP service information
+acp_suggest_cohort_method_specs
+                        Call cohort methods specification
+                        recommendation flow
+acp_suggest_phenotypes
+                        Call phenotype recommendation flow
+acp_workflow_context_dialogue
+                        Call workflow context dialogue flow
+applyConceptSetPatch    Apply concept set patch
+applyLLMActionsConceptSet
+                        Apply LLM-proposed actions to a concept set via
+                        ACP
+lintStudyDesign         Lint study design
+previewConceptSetPatch
+                        Preview concept set patch
+proposeIncludeDescendantsPatch
+                        Propose includeDescendants patch for concept
+                        set
+pullPhenotypeDefinitions
+                        Pull phenotype definitions to a local folder
+reviewPhenotypes        Review phenotype definitions for improvements
+selectPhenotypeImprovements
+                        Select phenotype improvements and optionally
+                        persist notes
+selectPhenotypeRecommendations
+                        Select phenotype recommendations
+suggestPhenotypes       Suggest phenotypes for a study protocol

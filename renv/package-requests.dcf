@@ -4,7 +4,7 @@
 # CRAN: use Package or Package@<version>; CRAN versions normally do not use a v prefix.
 # GitHub: use owner/repo@<tag-or-commit>; retain v only when it is part of the actual Git tag.
 # GitHub refs must be a release tag or commit SHA, never main, master, or HEAD.
-# Dependencies: true installs required dependencies for the requested package.
+# Dependencies: true installs required dependencies (Depends, Imports, LinkingTo) but not Suggests.
 
 # CRAN example:
 # Package: reticulate
@@ -17,13 +17,3 @@
 # Source: GitHub
 # Spec: OHDSI/PatientLevelPrediction@v6.6.0
 # Dependencies: true
-
-Package: SlashOhdsiStrategusAssistant
-Source: GitHub
-Spec: OHDSI/SlashOhdsiStrategusAssistant@e13091017e1785f0994d1df414b67a2d37bff72c
-Dependencies: true
-
-Package: SlashOhdsiAcpClient
-Source: GitHub
-Spec: OHDSI/SlashOhdsiAcpClient@8d02e87cbd78b04e25c11f58588a873beff3838e
-Dependencies: true

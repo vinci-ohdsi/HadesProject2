@@ -1,0 +1,134 @@
+CohortSubsetDefinition
+                        Cohort Subset Definition
+CohortSubsetOperator    Cohort Subset Operator
+CohortTemplateDefinition
+                        Class for automating the creation of bulk
+                        cohorts
+DemographicSubsetOperator
+                        Demographic Subset Operator
+LimitSubsetOperator     Limit Subset Operator
+SubsetCohortWindow      Time Window For Cohort Subset Operator
+SubsetOperator          Abstract base class for subsets.
+addCohortSubsetDefinition
+                        Add cohort subset definition to a cohort
+                        definition set
+addCohortTemplateDefintion
+                        Add Cohort template definition to cohort set
+addExcludeOnIndexSubsetDefinition
+                        Add exclude on index subset definition
+addIndicationSubsetDefinition
+                        Add Indication Subset Definition
+addRestrictionSubsetDefinition
+                        Add Restriction Subset Definition
+addSqlCohortDefinition
+                        Add an sql cohort definition
+addUnionCohortDefinition
+                        Add union cohort definition to cohort
+                        definition set
+checkAndFixCohortDefinitionSetDataTypes
+                        Check if a cohort definition set is using the
+                        proper data types
+computeChecksum         Computes the checksum for a value
+computeCohortAttrition
+                        Compute cohort attrition from inclusion rule
+                        statistics
+createAtcCohortTemplateDefinition
+                        Create ATC Cohort Template Definition
+createCohortSubset      Create Cohort Subset Operator
+createCohortSubsetDefinition
+                        Create Subset Definition
+createCohortSubsetOperator
+                        A definition of subset functions to be applied
+                        to a set of cohorts
+createCohortTables      Create cohort tables
+createCohortTemplateDefintion
+                        Create Cohort Template Definition
+createDemographicSubset
+                        Create Demographic Subset Operator
+createDemographicSubsetOperator
+                        Create createDemographicSubset Subset operator
+createEmptyCohortDefinitionSet
+                        Create an empty cohort definition set
+createEmptyNegativeControlOutcomeCohortSet
+                        Create an empty negative control outcome cohort
+                        set
+createLimitSubset       Create Limit Subset Operator
+createLimitSubsetOperator
+                        Create Limit Subset Operator
+createResultsDataModel
+                        Create the results data model tables on a
+                        database server.
+createRxNormCohortTemplateDefinition
+                        Create Rx Norm Cohort Template Definition
+createSnomedCohortTemplateDefinition
+                        Create SNOMED Cohort Template Definition
+createSubsetCohortWindow
+                        Create a relative time window for cohort subset
+                        operations
+createUnionCohortTemplate
+                        Create cohort template to union multiple
+                        cohorts
+dropCohortStatsTables   Drop cohort statistics tables
+exportCohortStatsTables
+                        Export the cohort statistics tables to the file
+                        system
+exportCohortSubsetStatsTables
+                        Export cohort subset statistics tables to the
+                        file system
+generateCohortSet       Generate a set of cohorts
+generateNegativeControlOutcomeCohorts
+                        Generate a set of negative control outcome
+                        cohorts
+getCohortCounts         Count the cohort(s)
+getCohortDefinitionSet
+                        Get a cohort definition set
+getCohortInclusionRules
+                        Get Cohort Inclusion Rules from a cohort
+                        definition set
+getCohortStats          Get Cohort Inclusion Stats Table Data
+getCohortTableNames     Used to get a list of cohort table names to use
+                        when creating the cohort tables
+getCohortValidationCounts
+                        Validate cohort
+getDataMigrator         Get database migrations instance
+getExcludeOnIndexSubsetDefinitionIds
+                        Get Exclude On Index Subset Definition Ids
+getIndicationSubsetDefinitionIds
+                        Get Indication Subset Definition Ids
+getLastGeneratedCohortChecksums
+                        Get last generated cohort checksums
+getRestrictionSubsetDefinitionIds
+                        Get Restriction Subset Definition Ids
+getResultsDataModelSpecifications
+                        Get specifications for CohortGenerator results
+                        data model
+getSubsetDefinitions    Get cohort subset definitions from a cohort
+                        definition set
+getTemplateDefinitions
+                        Extract template definitions from a cohort
+                        definition set
+insertInclusionRuleNames
+                        Used to insert the inclusion rule names from a
+                        cohort definition set when generating cohorts
+                        that include cohort statistics
+isCamelCase             Used to check if a string is in lower camel
+                        case
+isCohortDefinitionSet   Is the data.frame a cohort definition set?
+isFormattedForDatabaseUpload
+                        Is the data.frame formatted for uploading to a
+                        database?
+isSnakeCase             Used to check if a string is in snake case
+migrateDataModel        Migrate Data model
+omopCdmDrugExposure     OMOP CDM Drug Exposure Sample Data
+omopCdmPerson           OMOP CDM Person Sample Data
+readCsv                 Used to read a .csv file
+runCohortGeneration     Run a cohort generation and export results
+sampleCohortDefinitionSet
+                        Sample Cohort Definition Set
+saveCohortDefinitionSet
+                        Save the cohort definition set to the file
+                        system
+saveCohortSubsetDefinition
+                        Save cohort subset definitions to json
+uploadResults           Upload results to the database server.
+writeCsv                Used to write a .csv file

@@ -1,0 +1,224 @@
+### Index breakdown
+
+```{r}
+#| label: characterization_index_target
+#| echo: false
+#| results: 'asis'
+
+# check ROhdsiWebApi installed and skip otherwise
+if(system.file(package = "ROhdsiWebApi") != ""){
+
+# TARGET
+  
+targetIds <- cohortDefinitions %>%
+  dplyr::filter(.data$subsetParent == params$targetId) %>%
+  dplyr::arrange(.data$order, .data$cohortDefinitionId) %>%
+  dplyr::select("cohortDefinitionId") 
+targetIds <- targetIds$cohortDefinitionId
+
+characterizationTargetId <- unique(OhdsiReportGenerator::getCharacterizationTargetSettings(
+  connectionHandler = connectionHandler,
+  schema = params$schema,
+  targetIds = targetIds
+)$characterizationTargetId)
+
+# do we want to restrict above to nestingCohortId?
+
+for(i in 1:length(params$outcomeIds)){
+  jsonList <- ParallelLogger::convertJsonToSettings(json = cohortDefinitions$json[cohortDefinitions$cohortDefinitionId == params$outcomeIds[i]])
+  
+  if(!is.null(params$authMethod)){
+  ROhdsiWebApi::authorizeWebApi(
+    baseUrl = params$webAPI, 
+    authMethod = params$authMethod, 
+    webApiUsername = params$webApiUsername, 
+    webApiPassword = params$webApiPassword
+  )
+  }
+  
+  conceptsInOutcome <- c()
+  if(length(jsonList$ConceptSets)>0){
+    for(jListInd in 1:length(jsonList$ConceptSets)){
+      conceptsInOutcome <- unique(c(conceptsInOutcome, ROhdsiWebApi::resolveConceptSet(
+        conceptSetDefinition = jsonList$ConceptSets[[jListInd]], 
+        baseUrl = params$webAPI
+      )))
+    }
+  }
+
+
+  # TODO fix code to get all the case_settings for the characterizationTargetIds
+  # and the current outcomeId using OhdsiReportGenerator::getCharacterizationCaseSettings
+ caseSettings <- OhdsiReportGenerator::getCharacterizationCaseSettings(
+     connectionHandler = connectionHandler,
+     schema = params$schema,
+    characterizationTargetIds = characterizationTargetId,
+     outcomeIds = params$outcomeIds[i]
+  )
+
+  # OhdsiReportGenerator::getCharacterizationCaseSettings returns:
+  # settingId, databaseId, caseId, characterizationTargetTd, targetId,
+  # targetName, limitToFirstInNDays, minPriorObservation, nestingCohortId,
+  # nestingName, minAge, maxAge, studyStart, studyEnd, genderConceptIds,
+  # outcomeId, outcomeName, outcomeWashoutDays, riskWindowStart, startAnchor,
+  # riskWindowEnd, endAnchor, riskFactorSettings, caseSeriesSettings
+  # 
+  # first filter where caseSeriesSettings == 1 and then for each remaining row 
+  # loop to run getBinaryCaseSeries using the caseSettingId 
+  # also run getCaseCounts using the caseSettingId 
+
+  caseSettings <-  caseSettings %>%
+               dplyr::filter(.data$caseSeriesSettings == 1)
+
+if(!is.null(caseSettings) && nrow(caseSettings) > 0){
+  for(j in 1:nrow(caseSettings)){
+    
+    res <- OhdsiReportGenerator::getBinaryCaseSeries(
+      connectionHandler = connectionHandler, 
+      schema = params$schema, 
+      characterizationCaseId = caseSettings$characterizationCaseId[j], 
+      conceptIds = unique(conceptsInOutcome),
+      minVal = 0.01
+    )
+
+        if(!is.null(res) && nrow(res) > 0){
+ 
+    # make the covariateName nicer
+    res <- OhdsiReportGenerator::formatBinaryCovariateName(res)
+    
+    counts <- OhdsiReportGenerator::getCaseCounts(
+      connectionHandler = connectionHandler, 
+      schema = params$schema, 
+      characterizationCaseIds = caseSettings$characterizationCaseId[j], 
+      outcomeIds = params$outcomeIds[i] 
+    ) 
+    counts <- counts %>%
+      dplyr::select("databaseName","characterizationCaseId", "nPeople")
+    
+    index <- res %>% 
+      dplyr::select("databaseName", "characterizationCaseId",
+                    "covariateName", 
+                    "averageValueDuring") %>% 
+      dplyr::inner_join(counts, by = c("databaseName", "characterizationCaseId"))
+    
+    aggreggateIndex <- index %>% 
+      dplyr::group_by(.data$characterizationCaseId, .data$covariateName) %>%
+      dplyr::summarise(
+        averageValueDuring = mean(.data$averageValueDuring, na.rm = TRUE),
+        nPeople = sum(.data$nPeople)
+      ) %>%
+      dplyr::mutate(
+        databaseName = 'all'
+      )
+    
+    # add the combined that will be used to order table
+    index <- dplyr::bind_rows(index, aggreggateIndex)
+
+    targetFriendlyName <- cohortDefinitions$friendlyName[
+      cohortDefinitions$cohortDefinitionId == caseSettings$targetId[j]
+    ][1]
+    targetSubsetText <- cohortDefinitions$subsetText[
+      cohortDefinitions$cohortDefinitionId == caseSettings$targetId[j]
+    ][1]
+    outcomeFriendlyName <- cohortDefinitions$friendlyName[
+      cohortDefinitions$cohortDefinitionId == caseSettings$outcomeId[j]
+    ][1]
+
+    index <- index %>%
+      dplyr::mutate(
+        friendlyNameTarget = targetFriendlyName,
+        subsetTextTarget = targetSubsetText,
+        friendlyNameOutcome = outcomeFriendlyName
+      )
+    
+ibOutcome <- unique(index$friendlyNameOutcome)
+ibTar <- paste0(
+  "(", caseSettings$startAnchor[j], " + ",
+  caseSettings$riskWindowStart[j], ")-(",
+  caseSettings$endAnchor[j], " + ",
+  caseSettings$riskWindowEnd[j], ")"
+  )
+restriction <- paste0(
+  ' first exposure in ', caseSettings$limitToFirstInNDays[j], ' days ',
+  'and >= ', caseSettings$minPriorObservation[j], ' days observation at index ',
+  ' in nesting cohort ', caseSettings$nestingName[j], ' at index ',
+  ' aged between ', caseSettings$minAge[j], ' - ', caseSettings$maxAge[j], ' at index ',
+  ' study index between ', caseSettings$studyStart[j], ' to ', caseSettings$studyEnd[j], ' ',
+  ' gender in ', caseSettings$genderConceptIds[j]
+)
+
+# now we add the N to the databaseName we need to loop over TAR
+
+indexClean <- tidyr::pivot_wider(
+  data = index %>%
+    dplyr::mutate(
+      databaseName = paste0(.data$databaseName, ' (N = ', 
+                            ifelse(.data$nPeople >= 0 ,
+                                   .data$nPeople,
+                                   paste0('<',abs(.data$nPeople))
+                                   ),')')
+      ) 
+    , 
+  names_from = "databaseName", 
+  values_from = c("averageValueDuring"), 
+  id_cols = c("covariateName","friendlyNameTarget","subsetTextTarget")
+) %>%
+    dplyr::arrange(-1*.data$`all (N = 0)`) %>%
+  dplyr::select(-"all (N = 0)") %>%
+  dplyr::group_by(
+    .data$friendlyNameTarget,.data$subsetTextTarget
+  )
+
+# display - include the target settings and TAR/outcomeWashout
+
+boxName <- paste0('Frequency of ',ibOutcome,' concept codes when the patient exposed to ', indexClean$friendlyNameTarget[1], ' ', indexClean$subsetTextTarget[1],' restriction: ',restriction,' has the outcome (washout ',caseSettings$outcomeWashoutDays[j],') during ', ibTar)
+
+  cat('\n\n::: {.callout-note collapse="true"}')
+  cat(paste0("\n# ",boxName, '\n\n'))
+      
+print(htmltools::tagList(
+  indexClean  %>%  
+    gt::gt() %>%
+    gt::fmt_percent(
+      columns = colnames(indexClean)[! colnames(indexClean) %in% c("covariateName","friendlyNameTarget","subsetTextTarget", "friendlyNameOutcome")],
+      decimals = 2
+    ) %>%
+    gt::cols_label(
+      covariateName = "Covariate"
+    ) %>%
+    gt::tab_options(
+      heading.align = "left",
+      data_row.padding = gt::px(7),
+      column_labels.font.size = gt::px(12),
+      column_labels.background.color = "#EB1800",
+      column_labels.font.weight = "bold",
+      row_group.background.color = "#D3D3D3",
+      row_group.font.weight = "bold"
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(
+        color = "darkgrey",
+        font = gt::google_font("Source Sans Pro"),
+        transform = "uppercase"
+      ),
+      locations = gt::cells_column_labels(gt::everything())
+    ) %>%
+    gt::tab_header(
+      title = paste0('Frequency of ',ibOutcome,' concept codes when the patient in the target cohort has the outcome during ', ibTar)
+    )
+))
+
+cat('\n\n:::\n\n')
+
+  
+    } # if res has results
+  
+  }
+} # if > 0 rows
+
+
+}
+
+}
+
+```

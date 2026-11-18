@@ -1,0 +1,16 @@
+default_conn            Get the default connection
+duckdb                  Connect to a DuckDB database instance
+duckdb_error            DuckDB error conditions
+duckdb_explain-class    DuckDB EXPLAIN query tree
+duckdb_memory           Memory-efficient reading and writing
+duckdb_read_csv         Reads a CSV file into DuckDB
+duckdb_register         Register a data frame as a virtual table
+duckdb_register_arrow   Register an Arrow data source as a virtual
+                        table
+duckdb_storage_status   DuckDB file-system usage: storage locations and
+                        how they are resolved
+duckdb_types            DuckDB data types in R
+duckdb_types_arrow      DuckDB data types through Arrow
+sql_query               Run an SQL query or statement
+tbl_file                DuckDB SQL backend for dbplyr
+to_arrow_stream         Stream a dbplyr table on DuckDB into Arrow

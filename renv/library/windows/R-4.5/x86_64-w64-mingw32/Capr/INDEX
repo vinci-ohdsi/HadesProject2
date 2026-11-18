@@ -1,0 +1,319 @@
+==                      FUnction checks if two concept set class
+                        objects are equivalent
+CensoringCriteria-class
+                        An S4 class identifying a censoring criteria
+                        for the cohort
+Concept-class           An S4 class for a single OMOP Concept
+ConceptSet-class        An S4 class for ConceptSetExpresion
+ConceptSetItem-class    An S4 class for ConceptSetItem
+Criteria-class          An S4 for a criteria
+DrugExposureExit-class
+                        An S4 class for a cohort exit based on
+                        continuous exposure persistence.
+Endpoint-class          An S4 class for an Endpoint
+EventAperture-class     An S4 class for Aperture
+EventWindow-class       An S4 class for a Window
+FixedDurationExit-class
+                        An S4 class for a cohort exit based on fixed
+                        duration persistence.
+Group-class             An S4 class for a group
+ObservationExit-class   An S4 class for a cohort exit based on end of
+                        continuous observation.
+ObservationWindow-class
+                        An S4 class for an ObservationWindow
+Occurrence-class        An S4 class for an occurrence.
+Query-class             An S4 class for a Circe Query
+age                     Age attribute for a query
+ageAtEnd                Age at era end attribute (for era and period
+                        domains)
+ageAtStart              Age at era start attribute (for era and period
+                        domains)
+as.data.frame,ConceptSet-method
+                        Coerce a concept set expression to a dataframe
+as.json                 Coerce Capr object to json
+atLeast                 Require at least N occurrences of a query
+                        within a window
+atMost                  Require at most N occurrences of a query within
+                        a window
+attrition               Define cohort inclusion/exclusion rules
+                        (attrition)
+bt                      Between operator
+censoringEvents         Constructor for a set of censoring events
+cohort                  Build a cohort definition
+compile                 Compile a Capr object to json
+compile,Cohort-method   Compile a Capr cohort to json
+conceptAttribute-class
+                        An S4 class for a concept attribute
+conceptSetAttribute-class
+                        An S4 class for a concept set attribute that
+                        holds a reference to a concept set ID
+conditionEra            Query the condition era domain
+conditionOccurrence     Query the condition occurrence domain
+conditionSourceConcept
+                        Add a condition source concept attribute
+conditionStatus         Add a condition status attribute
+conditionStatusCS       Condition status filter via concept set —
+                        ConditionOccurrence
+conditionType           Add a condition type attribute to determine the
+                        provenance of the record
+conditionTypeCS         ConditionType filter via concept set
+                        (ConceptSetSelection)
+conditionTypeExclude    ConditionTypeExclude query attribute
+continuousObservation   A function to construct the observationWindow
+cs                      Create a concept set
+dateAdjustment          Shift the start and/or end date of a query
+                        event
+dateAdjustmentAttribute-class
+                        An S4 class for a date adjustment attribute
+daysOfSupply            Function to create days supply attribute
+death                   Query the death domain
+deathType               Add a death type attribute to determine the
+                        provenance of the record
+deathTypeCS             DeathType filter via concept set
+                        (ConceptSetSelection)
+deathTypeExclude        DeathTypeExclude query attribute
+detectUnsupportedKeys   Detect domain keys not in the supported set and
+                        emit skipOrStop for each (non-null/non-empty).
+                        Prevents silent semantic drift when new Circe
+                        fields appear.
+deviceExposure          Query the device exposure domain
+deviceType              Add a device type attribute to determine the
+                        provenance of the record
+deviceTypeCS            DeviceType filter via concept set
+                        (ConceptSetSelection)
+deviceTypeExclude       DeviceTypeExclude query attribute
+doseEra                 Query the dose era domain
+doseUnit                Dose unit attribute for drug exposure
+doseUnitCS              Dose unit filter via concept set — DrugExposure
+doseValue               Dose value attribute for DoseEra
+drugEra                 Query the drug era domain
+drugExit                Function to create an exit based on exit based
+                        on the end of a continuous drug exposure
+drugExposure            Query the drug exposure domain
+drugQuantity            Function to create quantity attribute
+drugRefills             Function to create refills attribute
+drugSourceConcept       Add a drug source concept attribute
+drugType                Add a drug type attribute to determine the
+                        provenance of the record
+drugTypeCS              DrugType filter via concept set
+                        (ConceptSetSelection)
+drugTypeExclude         DrugTypeExclude query attribute
+duringInterval          Function that creates an eventAperture an
+                        opening where an event can occur relative to
+                        the index event
+endDate                 Function that creates a end date attribute
+entry                   Create a cohort entry definition
+eq                      Equal to operator
+era                     Define cohort era collapse settings
+eraLength               Era length attribute for DrugEra
+ethnicityCS             Ethnicity filter via concept set
+                        (ConceptSetSelection, for demographic criteria)
+eventEnds               Function creates an event window where the
+                        event ends
+eventStarts             Function creates an event window where the
+                        event starts
+exactly                 Require exactly N occurrences of a query within
+                        a window
+exit                    Define cohort exit strategy
+firstOccurrence         Add first occurrence attribute
+fixedExit               Function to create an exit based on exit based
+                        on the end of a continuous drug exposure
+genderCS                Gender filter via concept set
+                        (ConceptSetSelection, for demographic criteria)
+genderConcepts          Add gender attribute with one or more concept
+                        IDs (e.g. both sexes)
+getConceptDescendants   Get all descendants of one or more standard
+                        concepts
+getConceptInfo          Look up concept details by concept ID
+getConceptSetCall       Create the Capr code to build a concept set
+getConceptSetDetails    Fill in Concept Set details using a vocab
+gt                      Greater than operator
+gte                     Greater than or equal to operator
+insertCaprCode          Insert decompiled Capr code into the current
+                        document (RStudio only)
+jsonToCapr              Decompile Atlas/Circe cohort JSON to Capr R
+                        code
+jsonToCaprFile          Write decompiled Capr R code to a file
+keyValueAttribute-class
+                        Attribute that serializes to a single key-value
+                        pair in query JSON. Used for boolean query
+                        options like ConditionTypeExclude. Has a 'name'
+                        slot (same as key) so compile/collectGuid work.
+logicAttribute-class    An S4 class for a logical attribute
+lotNumber               Lot number attribute for DrugExposure
+lt                      Less than operator
+lte                     Less than or equal to operator
+makeCohortSet           Make a cohort dataframe for cohort generator
+male                    Add male attribute to a query
+mapSourceToStandard     Map source (non-standard) codes to their
+                        standard OMOP concepts
+measurement             Query the measurement domain
+measurementOperator     Measurement operator attribute (e.g. equal to,
+                        less than)
+measurementOperatorCS   Measurement operator filter via concept set
+measurementSourceConcept
+                        Add a measurement source concept attribute
+measurementType         Add a measurement type attribute to determine
+                        the provenance of the record
+measurementTypeCS       MeasurementType filter via concept set
+                        (ConceptSetSelection)
+measurementTypeExclude
+                        MeasurementTypeExclude query attribute
+measurementUnit         Unit attribute for a query
+nbt                     Not between operator
+nestedAttribute-class   An S4 class for a nested attribute
+nestedWithAll           Construct a nested group where all criteria and
+                        groups must be satisfied
+nestedWithAny           Function to construct a nested group where any
+                        criteria and groups may be satisfied
+nestedWithAtLeast       Function to construct a nested group where at
+                        least some of the criteria or groups must be
+                        satisfied
+nestedWithAtMost        Function to construct a nested group where at
+                        most some of the criteria or groups must be
+                        satisfied
+observation             Query the observation domain
+observationExit         Function to create an exit based on continuous
+                        observation
+observationPeriod       Query the observation period domain
+observationPeriodType   Add a observation period type attribute to
+                        determine the provenance of the record
+observationQualifier    Observation qualifier attribute
+observationQualifierCS
+                        Observation qualifier filter via concept set
+observationSourceConcept
+                        Add a observation source concept attribute
+observationType         Add an observation type attribute to determine
+                        the provenance of the record
+observationTypeCS       ObservationType filter via concept set
+                        (ConceptSetSelection)
+observationTypeExclude
+                        ObservationTypeExclude query attribute
+occurrenceCount         Occurrence count attribute for ConditionEra
+opAttributeCharacter-class
+                        An S4 class for a op attribute that is a
+                        character
+opAttributeDate-class   An S4 class for a op attribute that is a date
+opAttributeInteger-class
+                        An S4 class for a op attribute that is an
+                        integer
+opAttributeNumeric-class
+                        An S4 class for a op attribute that is a
+                        numeric
+opAttributeSuper-class
+                        An S4 super class for other opAttribute objects
+                        to inherit.
+payerConcept            Payer concept attribute for PayerPlanPeriod
+payerPlanPeriod         Query the payer plan period domain (CDM >= 5.3)
+payerSourceConcept      Payer source concept attribute for
+                        PayerPlanPeriod
+periodLength            Period length attribute — ObservationPeriod,
+                        PayerPlanPeriod
+periodTypeCS            ObservationPeriod period type filter via
+                        concept set (ConceptSetSelection)
+placeOfService          Place of service attribute for visit occurrence
+placeOfServiceCS        Place of service filter via concept set —
+                        VisitOccurrence, VisitDetail
+planConcept             Plan concept attribute for PayerPlanPeriod
+planSourceConcept       Plan source concept attribute for
+                        PayerPlanPeriod
+procedure               Query the procedure occurrence domain
+procedureModifier       Procedure modifier attribute
+procedureModifierCS     Procedure modifier filter via concept set
+procedureSourceConcept
+                        Add a procedure source concept attribute
+procedureType           Add a procedure type attribute to determine the
+                        provenance of the record
+procedureTypeCS         ProcedureType filter via concept set
+                        (ConceptSetSelection)
+procedureTypeExclude    ProcedureTypeExclude query attribute
+providerSpecialtyCS     Provider specialty filter via concept set —
+                        multiple domains
+providerSpecialtyConcepts
+                        Add provider specialty filter to a visit
+                        (round-trip from Atlas JSON)
+quantityValue           Quantity attribute — ProcedureOccurrence,
+                        DeviceExposure, Specimen
+raceCS                  Race filter via concept set
+                        (ConceptSetSelection, for demographic criteria)
+rangeHigh               Function to create rangeHigh attribute
+rangeHighRatio          Range high ratio attribute for Measurement
+rangeLow                Function to create rangeLow attribute
+rankedSearchConcepts    Ranked vocabulary search with dialect-specific
+                        similarity scoring
+readConceptSet          Read a concept set json or csv into R
+routeConcept            Route concept attribute for drug exposure
+routeConceptCS          Route concept filter via concept set —
+                        DrugExposure
+searchConcepts          Search the OMOP vocabulary by keyword
+specimen                Query the specimen domain
+specimenAnatomicSite    Specimen anatomic site attribute
+specimenAnatomicSiteCS
+                        Specimen anatomic site filter via concept set
+specimenDiseaseStatus   Specimen disease status attribute
+specimenDiseaseStatusCS
+                        Specimen disease status filter via concept set
+specimenSourceId        Filter by specimen source ID text — Specimen
+specimenType            Add a specimen type attribute to determine the
+                        provenance of the record
+specimenTypeCS          SpecimenType filter via concept set
+                        (ConceptSetSelection)
+specimenTypeExclude     SpecimenTypeExclude query attribute
+sponsorConcept          Sponsor concept attribute for PayerPlanPeriod
+sponsorSourceConcept    Sponsor source concept attribute for
+                        PayerPlanPeriod
+startDate               Function that creates a start date attribute
+stopReason              Filter by stop reason text —
+                        ConditionOccurrence or DrugExposure
+stopReasonConcept       Stop reason concept attribute for
+                        PayerPlanPeriod
+stopReasonSourceConcept
+                        Stop reason source concept attribute for
+                        PayerPlanPeriod
+stringContains          String contains operator
+stringEndsWith          String ends with operator
+stringNotContains       String does not contain operator
+stringNotEndsWith       String does not end with operator
+stringNotStartsWith     String does not start with operator
+stringStartsWith        String starts with operator
+summary                 Summarise a Capr object
+toCirce                 Function to coerce cohort to circe
+toCohortJson            Convert a Capr cohort to JSON
+toConceptSetJson        Convert a Capr concept set to JSON
+uniqueDeviceId          Filter by unique device ID text —
+                        DeviceExposure
+unitCS                  Unit filter via concept set — Measurement,
+                        Observation, DoseEra, Specimen
+valueAsConcept          Add a value as concept attribute
+valueAsConceptSet       ValueAsConcept attribute from a concept set
+                        (for round-trip without DB)
+valueAsNumber           Function to create valueAsNumber attribute
+valueAsString           Attribute for Observation value_as_string
+                        filter (round-trip from Atlas ValueAsString)
+visit                   Query the visit occurrence domain
+visitDetail             Query the visit detail domain
+visitDetailSourceConcept
+                        Add a visit detail source concept attribute
+visitDetailTypeCS       Visit detail type filter via concept set —
+                        VisitDetail
+visitLength             Visit length attribute for VisitOccurrence
+visitSourceConcept      Add a visit source concept attribute
+visitType               Add a visit type attribute to determine the
+                        provenance of the record
+visitTypeCS             VisitType filter via concept set
+                        (ConceptSetSelection)
+visitTypeExclude        VisitTypeExclude query attribute
+visitTypeSet            Add a visit type attribute (filter by
+                        visit_concept_id) from a concept set
+withAll                 Function to construct a group where all
+                        criteria and groups must be satisfied
+withAny                 Function to construct a group where any
+                        criteria and groups may be satisfied
+withAtLeast             Function to construct a group where at least
+                        some of the criteria or groups must be
+                        satisfied
+withAtMost              Function to construct a group where at most
+                        some of the criteria or groups must be
+                        satisfied
+writeCohort             Write Cohort json file
+writeConceptSet         Save a concept set as a json file

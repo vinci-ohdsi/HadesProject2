@@ -1,0 +1,405 @@
+---
+title: "ASSURE Full Report"
+format:
+  html:
+    page-layout: full
+    toc-location: right
+    grid:
+      sidebar-width: 0px
+      body-width: 1200px
+self-contained: true
+toc: true
+toc-depth: 4
+toc-title: "Contents"
+number-sections: true
+prefer-html: true
+execute:
+  echo: false
+  warning: false
+params: 
+  server: NULL
+  password: NULL
+  username: NULL
+  dbms: "postgresql"
+  schema: 'main'
+  targetId: 1
+  outcomeIds: 3
+  indicationIds: NULL
+  restrictTargetToIndications: false
+  comparatorIds: NULL
+  cohortIds: !expr "c(1,3,2)"
+  cohortNames: !expr "c('target', 'outcome', 'comp')"
+  includeCI: true
+  includeCharacterization: true
+  includeCohortMethod: true
+  includeSccs: true
+  includePrediction: true
+  numberPredictors: 25
+  excludeText: NULL
+  timeRestrictionText: NULL
+  drugGap: 30
+  webAPI: NULL
+  authMethod: NULL
+  webApiUsername: NULL 
+  webApiPassword: NULL
+  pathToDriver: !expr "Sys.getenv('DATABASECONNECTOR_JAR_FOLDER')"
+---
+  
+```{r}
+#| label: configuration
+#| echo: false
+#| hide: true
+
+library(dplyr)
+
+# note: the targetName and outcomeName below currently requires
+# specifying friendly names
+targetName <- params$cohortNames[params$cohortIds == params$targetId]
+outcomeName <- paste0(params$cohortNames[params$cohortIds %in% params$outcomeIds], collapse = '/')
+
+restrictTargetToIndications <- params$restrictTargetToIndications
+indicationIds <- params$indicationIds
+
+#====================================
+# first create connection details
+#====================================
+
+connectionDetails <- DatabaseConnector::createConnectionDetails(
+  dbms = params$dbms,
+  user = params$username, 
+  password = params$password,
+  server = params$server, 
+  pathToDriver =  params$pathToDriver
+)
+#====================================
+
+#====================================
+# Figure out what sections to include in report
+#====================================
+
+# get prefixes - this only works with standard prefixes
+con <- DatabaseConnector::connect(
+  connectionDetails = connectionDetails
+  )
+tableNames <- DatabaseConnector::getTableNames(
+  connection = con,
+  databaseSchema = params$schema
+)
+DatabaseConnector::disconnect(con)
+
+prefixes <- unique(unlist(lapply(tableNames, function(x) strsplit(x,'_')[[1]][1])))
+
+includeCI <- 'ci' %in% prefixes & params$includeCI
+includeCharacterization <- 'c' %in% prefixes & params$includeCharacterization
+includeCohortMethod <- 'cm' %in% prefixes & params$includeCohortMethod 
+includeSccs <- 'sccs' %in% prefixes & params$includeSccs 
+includePrediction <- 'plp' %in% prefixes & params$includePrediction 
+#====================================
+
+#====================================
+# create connection handler
+#====================================
+connectionHandler <- ResultModelManager::ConnectionHandler$new(
+  connectionDetails = connectionDetails 
+)
+#====================================
+
+
+# ===================================
+# Get Cohorts
+# ===================================
+
+cohortDefinitions <- OhdsiReportGenerator::getCohortDefinitions(
+  connectionHandler = connectionHandler, 
+  schema = params$schema 
+)
+
+# code to process the cohortDefinitions - add friendly names etc...
+cohortDefinitions <- OhdsiReportGenerator::processCohortDefinitionsForQuarto(
+  cohortDefinitions = cohortDefinitions,
+  friendlyCohortIds = params$cohortIds,
+  friendlyCohortNames = params$cohortNames,
+  restrictTargetToIndications = restrictTargetToIndications,
+  indicationIds = params$indicationIds
+)
+
+# ===================================
+
+# find the cohort ids of interest to report
+restrictedCohorts <- OhdsiReportGenerator::restrictCohortDefinitionsForQuarto(
+  connectionHandler = connectionHandler,
+  schema = params$schema,
+  cohortDefinitions = cohortDefinitions,
+  targetId = params$targetId,
+  outcomeIds = params$outcomeIds,
+  comparatorIds = params$comparatorIds,
+  restrictTargetToIndications = restrictTargetToIndications,
+  indicationIds = params$indicationIds,
+  includeCohortMethod = includeCohortMethod
+)
+targetIdsOfInterest <- restrictedCohorts$targetIdsOfInterest # includes children
+comparatorIds <- restrictedCohorts$comparatorIds # may get replaced by CM comps if NULL
+comparatorIdsOfInterest <- restrictedCohorts$comparatorIdsOfInterest # includes children
+outcomeIdsOfInterest <- restrictedCohorts$outcomeIdsOfInterest
+indicationIdsOfInterest <- restrictedCohorts$indicationIdsOfInterest
+
+
+# for each  comps in CM get the name
+comparatorText <- paste0(unique(cohortDefinitions$friendlyName[cohortDefinitions$cohortDefinitionId %in% comparatorIds]), collapse = '/')
+
+# ===================================
+
+# add order column
+orderDf <- data.frame(
+  subsetParent = c(
+    params$targetId,
+    params$outcomeIds, 
+    params$indicationIds,
+    comparatorIds
+  ),
+  order = 1:length(c(
+    params$targetId,
+    params$outcomeIds, 
+    params$indicationIds,
+    comparatorIds
+  ))
+)
+
+cohortDefinitions <- 
+  merge(
+    cohortDefinitions,
+    orderDf, 
+    by.x = 'subsetParent', 
+    by.y = 'subsetParent', 
+    all.x = TRUE
+  )
+
+#nNegativeControls <- 100 # remove?
+
+
+
+```
+
+```{r}
+#| label: summary
+#| echo: false
+#| results: 'asis'
+
+cat(
+  knitr::knit_child('summary.qmd', quiet = TRUE, envir = parent.frame()),
+  sep = '\n'
+)
+
+```
+
+```{r}
+#| label: data
+#| echo: false
+#| results: 'asis'
+
+cat(
+  knitr::knit_child('data.qmd', quiet = TRUE, envir = parent.frame()),
+  sep = '\n'
+)
+
+```
+
+```{r}
+#| label: definitions
+#| echo: false
+#| results: 'asis'
+
+cat(
+  knitr::knit_child('definitions.qmd', quiet = TRUE, envir = parent.frame()),
+  sep = '\n'
+)
+
+```
+
+
+```{r}
+#| label: cohort_incidence
+#| echo: false
+#| results: 'asis'
+
+if(includeCI){
+  cat(
+  knitr::knit_child('cohort_incidence.qmd', quiet = TRUE, envir = parent.frame()),
+  sep = '\n'
+)
+}
+```
+
+
+
+```{r}
+#| label: characterization
+#| echo: false
+#| results: 'asis'
+
+if(includeCharacterization){
+  # ===================================
+result <- knitr::knit_child(text = knitr::knit_expand("characterization.qmd", quiet = TRUE, envir = environment()), quiet = TRUE)
+cat(result, sep = '\n')
+}
+```
+
+
+```{r}
+#| label: causal_inference
+#| echo: false
+#| results: 'asis'
+
+if(includeSccs || includeCohortMethod){
+if(includeCohortMethod){
+  # ===================================
+  # Get CohortMethod
+  # ===================================
+  
+  
+  # TODO: restrict to comparatorIdsOfInterest?
+  cohortMethodDiagnostics <- OhdsiReportGenerator::getCmDiagnosticsData(
+    connectionHandler = connectionHandler, 
+    schema = params$schema, 
+    targetIds = unique(c(targetIdsOfInterest, indicationIdsOfInterest)),
+    outcomeIds = outcomeIdsOfInterest
+  )
+  
+  if(nrow(cohortMethodDiagnostics) > 0){
+    if(!is.null(params$comparatorIds)){
+    cohortMethodDiagnostics <- cohortMethodDiagnostics %>%
+      dplyr::filter(.data$comparatorId %in% !!comparatorIdsOfInterest)
+    }
+  }
+  
+  if(nrow(cohortMethodDiagnostics) == 0){
+    includeCohortMethod <- FALSE
+  } else {
+  
+  # TODO: restrict to comparatorIdsOfInterest?
+  cmResults <- OhdsiReportGenerator::getCMEstimation(
+    connectionHandler = connectionHandler, 
+    schema = params$schema, 
+    targetIds = unique(c(targetIdsOfInterest, indicationIdsOfInterest)),
+    outcomeIds = outcomeIdsOfInterest
+  )
+  
+    if(nrow(cmResults) > 0){
+    if(!is.null(params$comparatorIds)){
+    cmResults <- cmResults %>%
+      dplyr::filter(.data$comparatorId %in% !!comparatorIdsOfInterest)
+    }
+  }
+  
+  # TODO: restrict to comparatorIdsOfInterest?
+  # return NULL if the evidence synth tables do not exist
+  cohortMethodES <- tryCatch({OhdsiReportGenerator::getCmMetaEstimation(
+    connectionHandler = connectionHandler, 
+    schema = params$schema, 
+    targetIds = unique(c(targetIdsOfInterest, indicationIdsOfInterest)),
+    outcomeIds = outcomeIdsOfInterest
+  )}, error = function(e){return(invisible(NULL))})
+  
+  if(!is.null(cohortMethodES)){
+    if(nrow(cohortMethodES) > 0){
+      if(!is.null(params$comparatorIds)){
+      cohortMethodES <- cohortMethodES %>%
+       dplyr::filter(.data$comparatorId %in% !!comparatorIdsOfInterest)
+      }
+    }
+  }
+  
+  cmTargets <- unique(cohortMethodDiagnostics$targetId)
+  cmComparators <- unique(cohortMethodDiagnostics$comparatorId)
+  cmOutcomes <- unique(cohortMethodDiagnostics$outcomeId)
+  cmDesc <- unique(cohortMethodDiagnostics$description) # can we extract this?
+  }
+  # ===================================
+}
+
+if(includeSccs){
+  # ===================================
+  # Get Sccs
+  # ===================================
+  
+  sccsDiagnostics <- OhdsiReportGenerator::getSccsDiagnosticsData(
+    connectionHandler = connectionHandler, 
+    schema = params$schema,
+    targetIds = unique(c(params$targetId, comparatorIds)), 
+    outcomeIds = outcomeIdsOfInterest
+  ) 
+  
+  # filter to the indications of interest
+  if(restrictTargetToIndications){
+    sccsDiagnostics <- sccsDiagnostics %>%
+      dplyr::filter(ifelse(is.na(.data$indicationId), "", .data$indicationId)  %in% indicationIdsOfInterest)
+  }
+  
+  if(nrow(sccsDiagnostics)  == 0){
+    includeSccs <- FALSE
+  } else {
+  
+  sccsResults <- OhdsiReportGenerator::getSccsEstimation(
+    connectionHandler = connectionHandler, 
+    schema = params$schema,
+    targetIds = unique(c(params$targetId, comparatorIds)), 
+    outcomeIds = outcomeIdsOfInterest
+  )
+  
+    # filter to the indications of interest
+  if(restrictTargetToIndications){
+    sccsResults <- sccsResults %>%
+      dplyr::filter(ifelse(is.na(.data$indicationId), "", .data$indicationId)  %in% indicationIdsOfInterest)
+  }
+  
+  # return NULL if the evidence synth tables do not exist
+  sccsES <- tryCatch({OhdsiReportGenerator::getSccsMetaEstimation(
+    connectionHandler = connectionHandler, 
+    schema = params$schema,
+    targetIds = unique(c(params$targetId, comparatorIds)), 
+    outcomeIds = outcomeIdsOfInterest
+  )}, error = function(e){return(invisible(NULL))})
+  
+  if(restrictTargetToIndications){
+    if(!is.null(sccsES)){
+    sccsES <- sccsES %>%
+      dplyr::filter(ifelse(is.na(.data$indicationId), "", .data$indicationId)  %in% indicationIdsOfInterest)
+    }
+  }
+  
+  sccsTargets <- unique(sccsDiagnostics$targetId)
+  sccsOutcomes <- unique(sccsDiagnostics$outcomeId)
+  sccsDesc <- unique(sccsDiagnostics$description)
+}
+  # ===================================
+}
+  
+result <- knitr::knit_child(text = knitr::knit_expand("causal_inference.qmd", quiet = TRUE, envir = environment()), quiet = TRUE)
+cat(result, sep = '\n')
+}
+```
+
+
+```{r}
+#| label: prediction
+#| echo: false
+#| results: 'asis'
+
+if(includePrediction){
+  
+result <- knitr::knit_child(text = knitr::knit_expand("prediction.qmd", quiet = TRUE, envir = environment()), quiet = TRUE)
+cat(result, sep = '\n')
+
+}
+```
+
+
+```{r}
+#| label: references
+#| echo: false
+#| results: 'asis'
+
+result <- knitr::knit_child(text = knitr::knit_expand("references.qmd", quiet = TRUE, envir = environment()), quiet = TRUE)
+cat(result, sep = '\n')
+```
+
