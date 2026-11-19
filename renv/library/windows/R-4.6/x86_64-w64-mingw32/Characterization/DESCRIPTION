@@ -1,0 +1,35 @@
+Package: Characterization
+Type: Package
+Title: Implement Descriptive Studies Using the Common Data Model
+Version: 4.1.0
+Date: 2026-9-15
+Authors@R: c( person("Jenna", "Reps", , "jreps@its.jnj.com", role = c("aut", "cre")), person("Patrick", "Ryan", , "ryan@ohdsi.org", role = c("aut")), person("Chris", "Knoll", , "knoll@ohdsi.org", role = c("aut")) )
+Maintainer: Jenna Reps <jreps@its.jnj.com>
+Description: An end-to-end framework that enables users to implement various descriptive studies for a given set of target and outcome cohorts for data mapped to the Observational Medical Outcomes Partnership Common Data Model.
+License: Apache License 2.0
+URL: https://ohdsi.github.io/Characterization/,
+    https://github.com/OHDSI/Characterization
+BugReports: https://github.com/OHDSI/Characterization/issues
+Depends: R (>= 4.0.0)
+Imports: Andromeda (>= 1.0.0), DatabaseConnector (>= 6.3.1), digest,
+    FeatureExtraction (>= 3.13.0), SqlRender (>= 1.9.0), ParallelLogger (>=
+    3.0.0), ResultModelManager, checkmate, dplyr, readr, rlang
+Suggests: CohortIncidence (>= 4.1.1), devtools, formatR, testthat, kableExtra,
+    knitr, markdown, rmarkdown, OhdsiShinyAppBuilder, shiny, withr
+NeedsCompilation: no
+Encoding: UTF-8
+VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0
+Author: Jenna Reps [aut, cre], Patrick Ryan [aut], Chris Knoll [aut]
+Built: R 4.6.1; ; 2026-11-19 12:53:37 UTC; windows
+RemoteType: github
+RemoteHost: api.github.com
+RemoteUsername: OHDSI
+RemoteRepo: Characterization
+RemoteRef: 0b7e342535f41292990c228e3063cc09ea9259c6
+RemoteSha: 0b7e342535f41292990c228e3063cc09ea9259c6
+GithubHost: api.github.com
+GithubRepo: Characterization
+GithubUsername: OHDSI
+GithubRef: 0b7e342535f41292990c228e3063cc09ea9259c6
+GithubSHA1: 0b7e342535f41292990c228e3063cc09ea9259c6

@@ -1,0 +1,36 @@
+Package: CohortIncidence
+Type: Package
+Title: Cohort Incidence Analysis for the OMOP Common Data Model
+Version: 4.2.0
+Date: 2026-07-27
+Authors@R: person(given = "Christopher", family = "Knoll", role = c("aut", "cre"), email = "cknoll@ohdsi.org")
+Description: Provides functionality for performing cohort incidence analyses against data stored in the OMOP Common Data Model (CDM). The package generates database-specific SQL, executes analyses across supported database platforms, and returns standardized incidence estimates using configurable time-at-risk, stratification, and cohort definitions. It is intended to support reproducible observational research within the OHDSI analytics framework.
+License: Apache License 2.0
+VignetteBuilder: knitr
+URL: https://ohdsi.github.io/CohortIncidence/
+BugReports: https://github.com/OHDSI/CohortIncidence/issues
+Depends: R (>= 3.2.2), DatabaseConnector (>= 3.0.0)
+Imports: rlang, rJava(>= 0.9-10), checkmate, jsonlite, SqlRender (>= 1.6.0)
+SystemRequirements: Java (>= 8)
+NeedsCompilation: yes
+LazyData: TRUE
+Encoding: UTF-8
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, withr, readr, Eunomia, duckdb,
+    R6
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
+Roxygen: list(markdown = TRUE)
+Author: Christopher Knoll [aut, cre]
+Maintainer: Christopher Knoll <cknoll@ohdsi.org>
+Built: R 4.6.1; ; 2026-11-19 12:23:57 UTC; windows
+RemoteType: github
+RemoteHost: api.github.com
+RemoteUsername: OHDSI
+RemoteRepo: CohortIncidence
+RemoteRef: fc39a9d42cb20a3dd620400d7373bc036ea59e40
+RemoteSha: fc39a9d42cb20a3dd620400d7373bc036ea59e40
+GithubHost: api.github.com
+GithubRepo: CohortIncidence
+GithubUsername: OHDSI
+GithubRef: fc39a9d42cb20a3dd620400d7373bc036ea59e40
+GithubSHA1: fc39a9d42cb20a3dd620400d7373bc036ea59e40

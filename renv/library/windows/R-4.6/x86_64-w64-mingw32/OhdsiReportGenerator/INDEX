@@ -1,0 +1,186 @@
+.getCmVersion           An internal function to determine the version
+                        of CohortMethod used to store results
+.getSccsVersion         An internal function to determine the version
+                        of SCCS used to store results
+OhdsiReportGenerator    OhdsiReportGenerator
+addTarColumn            addTarColumn
+characterizationCompareBinary
+                        A function to extract cohort aggregate binary
+                        feature characterization results
+characterizationCompareContinuous
+                        A function to extract cohort aggregate
+                        continuous feature characterization results
+createCharacterizationIndexes
+                        A function to add indexes to the
+                        Characterization results
+createCohortIndexes     A function to add indexes to the Cohort
+                        Generator results
+createIncidenceIndexes
+                        A function to add indexes to the incidence
+                        results
+createPredictionReport
+                        createPredictionReport
+createSccsIndexes       A function to add indexes to the SCCS results
+formatBinaryCovariateName
+                        formatBinaryCovariateName
+generateFullReport      generateFullReport
+generateSummaryPredictionReport
+                        generateSummaryPredictionReport
+getAnalysisCohorts      Extracts the different analyses ran for each
+                        target and event cohorts
+getBinaryCaseSeries     A function to extract case series
+                        characterization results
+getBinaryRiskFactors    A function to extract non-case and case binary
+                        characterization results
+getBinaryTargetBaseline
+                        Extract the aggregate covariates for the target
+                        ids of interest
+getCMEstimation         Extract the cohort method results
+getCaseCounts           Extract the outcome cohort counts result
+getCharacterizationCaseSettings
+                        A function to extract the case settings found
+                        in characterization
+getCharacterizationDemographics
+                        Extract the binary age groups for the cases and
+                        targets
+getCharacterizationTargetSettings
+                        A function to extarct the targets settings
+                        found in characterization
+getCmDiagnosticsData    Extract the cohort method diagostic results
+getCmMetaEstimation     Extract the cohort method meta analysis results
+getCmNegativeControlEstimates
+                        Extract the cohort method negative controls
+getCmOutcomes           A function to extract the outcomes found in
+                        cohort method
+getCmPropensityModel    Extract the cohort method model
+getCmTable              Extract the cohort method table specified
+getCmTargets            A function to extract the targets found in
+                        cohort method
+getCohortAttrition      Get cohort attrition
+getCohortCounts         Extract the cohort counts
+getCohortDefinitions    Extract the cohort definition details
+getCohortInclusionRules
+                        Extract the cohort inclusion rules
+getCohortInclusionStats
+                        Extract the cohort inclusion stats
+getCohortInclusionSummary
+                        Extract the cohort inclusion summary
+getCohortMeta           Extract the cohort meta
+getCohortSubsetAttrition
+                        Get cohort subset attrition
+getCohortSubsetDefinitions
+                        Extract the cohort subset definition details
+getContinuousCaseSeries
+                        A function to extract case series continuous
+                        feature characterization results
+getContinuousRiskFactors
+                        A function to extract non-case and case
+                        continuous characterization results
+getContinuousTargetBaseline
+                        Extract aggregate statistics of continuous
+                        feature analysis IDs of interest for targets
+getDatabaseDetails      Extract the database used in the analyses
+getDechallengeRechallenge
+                        Extract the dechallenge rechallenge results
+getDechallengeRechallengeFails
+                        A function to extract the failed
+                        dechallenge-rechallenge cases
+getEventDuration        Extracts summary of event duration
+getExampleConnectionDetails
+                        create a connection detail for an example OHDSI
+                        results database
+getFullPredictionPerformances
+                        Extract the model performances per evaluation
+getIncidenceRates       Extract the cohort incidence result
+getIncidenceTargetSettings
+                        A function to extarct the cohort incidence
+                        targets
+getNonCaseCounts        Extract the non-cases counts result
+getOutcomeTable         Extract the outcome cohorts and where they are
+                        used in the analyses.
+getOutcomesUsedInCharacterization
+                        A function to extract the outcomes found in
+                        characterization
+getOutcomesUsedInIncidence
+                        A function to extract the outcomes found in
+                        incidence
+getPredictionAggregateTopPredictors
+                        Extract the top N predictors across a set of
+                        models
+getPredictionCohorts    Extract a complete set of cohorts used in the
+                        prediction results
+getPredictionCovariates
+                        Extract covariate summary details
+getPredictionDiagnosticTable
+                        Extract specific diagnostic table
+getPredictionDiagnostics
+                        Extract the model design diagnostics for a
+                        specific development database
+getPredictionHyperParamSearch
+                        Extract hyper parameters details
+getPredictionIntercept
+                        Extract model interception (for logistic
+                        regression)
+getPredictionLift       Extract model lift at given model sensitivity
+getPredictionModelDesigns
+                        Extract the model designs from the prediction
+                        results
+getPredictionOutcomes   A function to extract the outcomes found in
+                        prediction
+getPredictionPerformanceTable
+                        Extract specific results table
+getPredictionPerformances
+                        Extract the model performances
+getPredictionTargets    A function to extarct the targets found in
+                        prediction
+getPredictionTopPredictors
+                        Extract the top N predictors per model
+getSccsDiagnosticsData
+                        Extract the self controlled case series (sccs)
+                        diagostic results
+getSccsEstimation       Extract the self controlled case series (sccs)
+                        results
+getSccsMetaEstimation   Extract the self controlled case series (sccs)
+                        meta analysis results
+getSccsModel            Extract the SCCS model table
+getSccsNegativeControlEstimates
+                        Extract the SCCS negative controls
+getSccsOutcomes         A function to extract the outcomes found in
+                        self controlled case series
+getSccsTable            Extract the SCCS table specified
+getSccsTargets          A function to extract the targets found in self
+                        controlled case series
+getSccsTimeToEvent      Extract the SCCS time-to-event
+getSubsetText           Function that converts a subsetDefinitionJson
+                        into text description
+getTargetCounts         Extract the target cohort counts result
+getTargetTable          Extract the target cohorts and where they are
+                        used in the analyses.
+getTargetsUsedInCharacterization
+                        A function to extarct the targets found in
+                        characterization
+getTargetsUsedInIncidence
+                        A function to extract the targets found in
+                        incidence
+getTimeToEvent          Extract the time to event result
+getTreatmentPathways    Extracts treatment pathways
+kableDark               output a nicely formatted html table
+plotAgeDistributions    Plots the age distributions using the binary
+                        age groups
+plotCmEstimates         Plots the cohort method results for one
+                        analysis
+plotSccsEstimates       Plots the self controlled case series results
+                        for one analysis
+plotSexDistributions    Plots the sex distributions using the sex
+                        features
+processCohortDefinitionsForQuarto
+                        Function processes the cohortDefinitions object
+                        ready for use in the main quarto report.
+processCohorts          Extract the cohort parents and children cohorts
+                        (cohorts derieved from the parent cohort)
+removeSpaces            removeSpaces
+restrictCohortDefinitionsForQuarto
+                        Function to figure out the target, comparator,
+                        outcome and indication ids of interest for the
+                        quarto report based on the user inputs
+viewIncidenceRate       View the Incidence Rates
