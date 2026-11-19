@@ -1408,7 +1408,7 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.7-4",
+      "Version": "1.7-5",
       "Source": "Repository",
       "VersionNote": "do also bump src/version.h, inst/include/Matrix/version.h",
       "Date": "2025-08-27",
@@ -4982,7 +4982,7 @@
     },
     "ellipsis": {
       "Package": "ellipsis",
-      "Version": "0.3.2",
+      "Version": "0.3.3",
       "Source": "Repository",
       "Title": "Tools for Working with ...",
       "Description": "The ellipsis is a powerful tool for extending functions. Unfortunately  this power comes at a cost: misspelled arguments will be silently ignored.  The ellipsis package provides a collection of functions to catch problems and alert the user.",
@@ -5149,7 +5149,7 @@
     },
     "fansi": {
       "Package": "fansi",
-      "Version": "1.0.6",
+      "Version": "1.0.7",
       "Source": "Repository",
       "Title": "ANSI Control Sequence Aware String Functions",
       "Description": "Counterparts to R string manipulation functions that account for the effects of ANSI text formatting control sequences.",
@@ -5404,7 +5404,7 @@
     },
     "foreign": {
       "Package": "foreign",
-      "Version": "0.8-86",
+      "Version": "0.8-91",
       "Source": "Repository",
       "Priority": "recommended",
       "Date": "2023-11-26",
@@ -8023,7 +8023,7 @@
     },
     "mgcv": {
       "Package": "mgcv",
-      "Version": "1.9-3",
+      "Version": "1.9-4",
       "Source": "Repository",
       "Authors@R": "person(given = \"Simon\", family = \"Wood\", role = c(\"aut\", \"cre\"), email = \"simon.wood@r-project.org\")",
       "Title": "Mixed GAM Computation Vehicle with Automatic Smoothness Estimation",
@@ -10399,7 +10399,7 @@
     },
     "rpart": {
       "Package": "rpart",
-      "Version": "4.1.23",
+      "Version": "4.1.27",
       "Source": "Repository",
       "Priority": "recommended",
       "Date": "2023-12-04",
@@ -11337,7 +11337,7 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.6-4",
+      "Version": "3.8-6",
       "Source": "Repository",
       "Title": "Survival Analysis",
       "Priority": "recommended",
@@ -11539,7 +11539,7 @@
     },
     "testthat": {
       "Package": "testthat",
-      "Version": "3.2.3",
+      "Version": "3.3.2",
       "Source": "Repository",
       "Title": "Unit Testing for R",
       "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")), person(\"R Core team\", role = \"ctb\", comment = \"Implementation of utils::recover()\") )",
@@ -12613,7 +12613,7 @@
     },
     "xts": {
       "Package": "xts",
-      "Version": "0.14.1",
+      "Version": "0.14.3",
       "Source": "Repository",
       "Type": "Package",
       "Title": "eXtensible Time Series",
