@@ -17,3 +17,9 @@
 # Source: GitHub
 # Spec: OHDSI/PatientLevelPrediction@v6.6.0
 # Dependencies: true
+
+
+Package: pkgload
+Source: CRAN
+Spec: pkgload@1.5.3
+Dependencies: true
