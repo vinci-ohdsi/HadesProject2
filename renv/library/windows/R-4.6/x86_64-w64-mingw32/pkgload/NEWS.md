@@ -1,3 +1,27 @@
+# pkgload 1.5.3
+
+* When reloading a package, `load_all()` now runs the unload hooks of the
+  previously loaded package (`.onUnload()` and user hooks registered with
+  `setHook()`), whether it was loaded with pkgload or regularly. The old
+  namespace and its DLL are still kept loaded so that dangling references
+  continue to work, and errors thrown from `.onUnload()` are demoted to
+  warnings so that they can't prevent reloading (#253).
+
+# pkgload 1.5.2
+
+* Better handling of S7 topics (#332).
+
+
+# pkgload 1.5.1
+
+* Fixes for CRAN checks.
+
+
+# pkgload 1.5.0
+
+* Added support for injecting breakpoints in Positron (posit-dev/positron#1766).
+
+
 # pkgload 1.4.1
 
 * `load_all()` now supports explicit `debug` option to control using debug compiler flags (#224, @assaron).
